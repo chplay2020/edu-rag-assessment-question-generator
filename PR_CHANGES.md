@@ -28,6 +28,4 @@ File này tóm tắt toàn bộ các thay đổi cốt lõi trong giai đoạn k
   - `Login.tsx`: Trang đăng nhập phong cách Glassmorphism mượt mà.
   - `Dashboard.tsx`: Trang tổng quan chứa giao diện thống kê giữ chỗ (placeholder).
 
----
-
 **Ghi chú cho Reviewer**: Tất cả cấu trúc hiện tại đã sẵn sàng để tích hợp trực tiếp PostgreSQL (backend) và kết nối API (frontend) trong các Sprint tiếp theo.
