@@ -1,22 +1,33 @@
-# PR Description: Khởi tạo Fullstack Skeleton
+# Báo cáo PR: Hoàn thành Task T002 & T003 (Project Foundation)
 
-Dưới đây là chi tiết các thay đổi trong đợt commit
+File này tóm tắt toàn bộ các thay đổi cốt lõi trong giai đoạn khởi tạo dự án để Leader dễ dàng review code trước khi merge.
 
-## Những phần đã thay đổi và Lý do
+## 1. Backend (Task T002: Khởi tạo FastAPI project structure)
 
-### 1. Khởi tạo Backend (FastAPI)
+**Định nghĩa hoàn thành (DoD): Backend chạy /health (Hoàn tất 100%)**
 
-- **Thay đổi**:
-  - Khai báo các thư viện cần thiết (`fastapi`, `uvicorn`, `pydantic`, `sqlalchemy`, `alembic`) trong `backend/requirements.txt`.
-  - Khởi tạo instance FastAPI và cấu hình CORS ở file `backend/app/main.py`.
-  - Thiết lập class `Settings` quản lý biến môi trường trong `backend/app/core/config.py`.
-  - Tạo Router API gốc trong `backend/app/api/main.py`.
-- **Lý do**: Các file rỗng ban đầu không thể chạy được. Việc thiết lập khung chuẩn của FastAPI giúp dự án sẵn sàng để chia việc (người làm API user, người làm module xử lý AI) mà không bị conflict. CORS được cấu hình mở (`*`) để frontend ở môi trường dev có thể dễ dàng gọi sang.
+- **Project Structure**: Đã thiết lập cấu trúc thư mục chuẩn (`app`, `routers`, `services`, `schemas`, `core config`).
+- **Core Config (`app/core/config.py`)**: Khởi tạo `pydantic-settings` để quản lý biến môi trường.
+- **Global Exception Handler (`app/core/exceptions.py`)**: Đã thiết lập bộ xử lý lỗi tập trung để bắt các lỗi phổ biến (Validation, 404, 500) và trả về format chung, kèm class `AppException`.
+- **Base Schema & Init**: Tạo `BaseSchema` trong `app/schemas/base.py` kế thừa từ BaseModel (với cấu hình chuẩn cho ORM) và các file `__init__.py` cho services/schemas.
+- **API Router (`app/api/main.py`)**: Thiết lập router gốc để gắn các module sau này.
+- **Health Check**: API `GET /health` đã hoạt động thành công tại `app/main.py`.
 
-### 2. Khởi tạo Frontend (React + Vite + TypeScript)
+## 2. Frontend (Task T003: Khởi tạo React/Next.js frontend)
 
-- **Thay đổi**:
-  - Dọn dẹp các file rỗng ở thư mục `frontend/`.
-  - Dùng `create-vite` để sinh cấu trúc thư mục React với TypeScript.
-  - Cài đặt thêm thư viện `axios` (gọi API) và `react-router-dom` (chia trang).
-- **Lý do**: Vite là build tool hiện đại giúp server frontend chạy cực nhanh. Việc dùng TypeScript sẽ giảm thiểu rất nhiều lỗi khi làm việc nhóm so với JavaScript thuần, đồng thời `axios` và `react-router-dom` là các công cụ gần như bắt buộc cho một ứng dụng web Single Page Application (SPA).
+**Định nghĩa hoàn thành (DoD): Frontend chạy local, có layout chính (Hoàn tất 100%)**
+
+- **Framework & Libraries**: Khởi tạo bằng Vite + React + TypeScript. Cài đặt `react-router-dom` và `axios`.
+- **Global Styles (`index.css`)**: Xóa code mặc định, thiết lập hệ thống CSS Variables theo phong cách **Premium UI (Glassmorphism, font Inter, màu sắc hiện đại)**.
+- **UI Components Base (`components/common/Button.tsx`)**: Tạo component nút bấm dùng chung có hỗ trợ variants (primary, secondary) và hiệu ứng hover.
+- **Routing & Layout (`App.tsx`, `layouts/MainLayout.tsx`)**:
+  - Thiết lập Router xử lý luồng đi giữa các trang.
+  - Tạo layout chính gồm Sidebar và Header gọn gàng để render các nội dung con (Dashboard, Question Bank...).
+- **Auth Guard Placeholder (`routes/AuthGuard.tsx`)**: Tạo component bọc bảo vệ route. Tạm thời dùng mock logic (`localStorage`) để chuyển hướng (redirect) người dùng chưa đăng nhập về trang Login.
+- **Pages**: Xây dựng 2 trang cơ bản:
+  - `Login.tsx`: Trang đăng nhập phong cách Glassmorphism mượt mà.
+  - `Dashboard.tsx`: Trang tổng quan chứa giao diện thống kê giữ chỗ (placeholder).
+
+---
+
+**Ghi chú cho Reviewer**: Tất cả cấu trúc hiện tại đã sẵn sàng để tích hợp trực tiếp PostgreSQL (backend) và kết nối API (frontend) trong các Sprint tiếp theo.
