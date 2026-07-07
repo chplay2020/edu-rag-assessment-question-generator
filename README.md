@@ -1,31 +1,30 @@
-# Báo cáo PR: Hoàn thành Task T002 & T003 (Project Foundation)
+# T013 - Protected routes + logout
 
-File này tóm tắt toàn bộ các thay đổi cốt lõi trong giai đoạn khởi tạo dự án để Leader dễ dàng review code trước khi merge.
+## Thông tin Task
+- **Task ID:** T013
+- **Component:** Frontend
+- **Feature:** Auth/RBAC
+- **Module:** Authentication
+- **Name:** Protected routes + logout
+- **Mô tả:** [FE] Protected routes + logout
+- **Note:** Không login không vào được app.
 
-## 1. Backend (Task T002: Khởi tạo FastAPI project structure)
+## Chi tiết những gì đã làm
 
-**Định nghĩa hoàn thành (DoD): Backend chạy /health (Hoàn tất 100%)**
+1. **Xác thực và củng cố Protected Routes (`AuthGuard`):**
+   - Đã kiểm tra và đảm bảo Component `AuthGuard` (tại `frontend/src/routes/AuthGuard.tsx`) hoạt động đúng mục đích. 
+   - `AuthGuard` bọc tất cả các private routes bên trong `App.tsx` (như Dashboard `/`, Question Bank `/questions`, Courses `/courses`). 
+   - Nếu người dùng truy cập vào các trang này nhưng chưa đăng nhập (không có flag `isAuthenticated` trong `localStorage`), `AuthGuard` sẽ chặn lại và tự động redirect về trang `/login`. Điều này đáp ứng chính xác yêu cầu "Không login không vào được app".
 
-- **Project Structure**: Đã thiết lập cấu trúc thư mục chuẩn (`app`, `routers`, `services`, `schemas`, `core config`).
-- **Core Config (`app/core/config.py`)**: Khởi tạo `pydantic-settings` để quản lý biến môi trường.
-- **Global Exception Handler (`app/core/exceptions.py`)**: Đã thiết lập bộ xử lý lỗi tập trung để bắt các lỗi phổ biến (Validation, 404, 500) và trả về format chung, kèm class `AppException`.
-- **Base Schema & Init**: Tạo `BaseSchema` trong `app/schemas/base.py` kế thừa từ BaseModel (với cấu hình chuẩn cho ORM) và các file `__init__.py` cho services/schemas.
-- **API Router (`app/api/main.py`)**: Thiết lập router gốc để gắn các module sau này.
-- **Health Check**: API `GET /health` đã hoạt động thành công tại `app/main.py`.
+2. **Cải tiến luồng trải nghiệm tại trang Login:**
+   - **Tệp chỉnh sửa:** `frontend/src/pages/Login.tsx`
+   - **Thay đổi:** Thêm một `useEffect` để kiểm tra trạng thái đăng nhập ngay khi vào trang Login. Nếu người dùng **đã đăng nhập** trước đó, hệ thống sẽ tự động điều hướng họ thẳng vào trang chủ Dashboard (`/`, với `replace: true`) thay vì bắt họ xem lại form đăng nhập.
 
-## 2. Frontend (Task T003: Khởi tạo React/Next.js frontend)
+3. **Xác thực tính năng Logout:**
+   - Đã kiểm tra tính năng đăng xuất tại `frontend/src/layouts/MainLayout.tsx`.
+   - Hàm `handleLogout` khi người dùng bấm nút Logout ở góc phải phía trên màn hình sẽ thực hiện xóa key `isAuthenticated` khỏi `localStorage` một cách an toàn và lập tức redirect người dùng ra trang `/login`.
 
-**Định nghĩa hoàn thành (DoD): Frontend chạy local, có layout chính (Hoàn tất 100%)**
-
-- **Framework & Libraries**: Khởi tạo bằng Vite + React + TypeScript. Cài đặt `react-router-dom` và `axios`.
-- **Global Styles (`index.css`)**: Xóa code mặc định, thiết lập hệ thống CSS Variables theo phong cách **Premium UI (Glassmorphism, font Inter, màu sắc hiện đại)**.
-- **UI Components Base (`components/common/Button.tsx`)**: Tạo component nút bấm dùng chung có hỗ trợ variants (primary, secondary) và hiệu ứng hover.
-- **Routing & Layout (`App.tsx`, `layouts/MainLayout.tsx`)**:
-  - Thiết lập Router xử lý luồng đi giữa các trang.
-  - Tạo layout chính gồm Sidebar và Header gọn gàng để render các nội dung con (Dashboard, Question Bank...).
-- **Auth Guard Placeholder (`routes/AuthGuard.tsx`)**: Tạo component bọc bảo vệ route. Tạm thời dùng mock logic (`localStorage`) để chuyển hướng (redirect) người dùng chưa đăng nhập về trang Login.
-- **Pages**: Xây dựng 2 trang cơ bản:
-  - `Login.tsx`: Trang đăng nhập phong cách Glassmorphism mượt mà.
-  - `Dashboard.tsx`: Trang tổng quan chứa giao diện thống kê giữ chỗ (placeholder).
-
-**Ghi chú cho Reviewer**: Tất cả cấu trúc hiện tại đã sẵn sàng để tích hợp trực tiếp PostgreSQL (backend) và kết nối API (frontend) trong các Sprint tiếp theo.
+## Tóm tắt trạng thái
+- Tính năng bảo vệ các trang không cho phép khách truy cập (Protected routes) hoạt động ổn định.
+- Chức năng đăng xuất (Logout) xóa đúng state và điều hướng chính xác.
+- Luồng UX được đảm bảo chặt chẽ (đã login thì không thấy màn hình login nữa, chưa login thì không vào được app).
