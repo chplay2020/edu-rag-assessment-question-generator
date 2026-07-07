@@ -1,8 +1,5 @@
 from fastapi import APIRouter
+from app.api.routes import courses
 
 api_router = APIRouter()
-
-# Đăng ký các router con ở đây trong tương lai
-# Ví dụ:
-# from app.api.endpoints import questions
-# api_router.include_router(questions.router, prefix="/questions", tags=["questions"])
+api_router.include_router(courses.router, prefix="/courses", tags=["courses"])

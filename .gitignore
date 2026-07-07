@@ -3,3 +3,7 @@ dist/
 .env
 .vscode/
 .history/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
