@@ -7,6 +7,4 @@ venv/
 .venv/
 __pycache__/
 *.py[cod]
-
-# Rules của agent
 .agents/rules.md
