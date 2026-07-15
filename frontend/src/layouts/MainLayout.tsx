@@ -24,7 +24,7 @@ export const MainLayout: React.FC = () => {
   return (
     <div className="layout-container">
       {/* Sidebar */}
-      <aside className="sidebar glass-panel">
+      <aside className="sidebar">
         <div className="sidebar-header">
           <img src={logo} className="sidebar-logo" alt="Logo Edu RAG" />
           <h2>Edu RAG</h2>

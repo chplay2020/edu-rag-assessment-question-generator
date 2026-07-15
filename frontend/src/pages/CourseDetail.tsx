@@ -128,12 +128,15 @@ export const CourseDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Header actions */}
-        <div className="course-detail-header-actions">
-          <button className="btn-action-disabled" disabled title="Chức năng thuộc task T016">
-            <PencilSimple size={15} weight="bold" />
-            Sửa môn học
-          </button>
+        {/* Header Right (Stats + Actions) */}
+        <div className="course-detail-header-right">
+
+          <div className="course-detail-header-actions">
+            <button className="btn-action-disabled" disabled title="Chức năng thuộc task T016">
+              <PencilSimple size={15} weight="bold" />
+              Sửa môn học
+            </button>
+          </div>
         </div>
       </div>
 
@@ -141,22 +144,31 @@ export const CourseDetail: React.FC = () => {
       <div className="course-detail-main-row">
         {/* Basic info card */}
         <div className="course-detail-info-card">
-          <h2 className="course-detail-card-title">Thông tin cơ bản</h2>
-          <div className="course-detail-info-list">
-            <div className="info-row">
-              <span className="info-icon"><User size={15} weight="duotone" /></span>
-              <span className="info-label">Giảng viên</span>
-              <span className="info-value">{course.instructor ?? '—'}</span>
+          <div className="course-detail-card-header-row">
+            <h2 className="course-detail-card-title" style={{ marginBottom: 0 }}>Thông tin cơ bản</h2>
+            <div className="course-detail-updated-inline">
+              <Clock size={15} weight="duotone" />
+              <span>Cập nhật: {formatDate(course.updated_at)}</span>
             </div>
-            <div className="info-row">
-              <span className="info-icon"><Calendar size={15} weight="duotone" /></span>
-              <span className="info-label">Học kỳ</span>
-              <span className="info-value">{course.semester ?? '—'}</span>
+          </div>
+          <div className="course-detail-info-list info-chip-list">
+            <div className="info-chip-row">
+              <div className="info-chip-icon-wrapper">
+                <User size={16} weight="duotone" />
+              </div>
+              <div className="info-chip-content">
+                <span className="info-chip-label">Giảng viên</span>
+                <span className="info-chip-value">{course.instructor ?? '—'}</span>
+              </div>
             </div>
-            <div className="info-row">
-              <span className="info-icon"><Clock size={15} weight="duotone" /></span>
-              <span className="info-label">Cập nhật</span>
-              <span className="info-value">{formatDate(course.updated_at)}</span>
+            <div className="info-chip-row">
+              <div className="info-chip-icon-wrapper">
+                <Calendar size={16} weight="duotone" />
+              </div>
+              <div className="info-chip-content">
+                <span className="info-chip-label">Học kỳ</span>
+                <span className="info-chip-value">{course.semester ?? '—'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -171,7 +183,7 @@ export const CourseDetail: React.FC = () => {
       {/* Placeholder sections */}
       <div className="course-detail-sections-row">
         {/* Materials placeholder */}
-        <div className="course-detail-section-card">
+        <div className="course-detail-section-card panel-materials">
           <div className="section-card-header">
             <div className="section-card-icon materials-icon">
               <BookOpen size={20} weight="duotone" />
@@ -180,7 +192,7 @@ export const CourseDetail: React.FC = () => {
               <h3 className="section-card-title">Tài liệu học tập</h3>
               <p className="section-card-count">{course.materialsCount} tài liệu</p>
             </div>
-            <button className="btn-section-action" disabled title="Sẽ hoàn thiện trong task Material UI">
+            <button className="btn-section-action disabled-materials" disabled title="Sẽ hoàn thiện trong task Material UI">
               <ArrowSquareOut size={14} weight="bold" />
               Xem tài liệu
             </button>
@@ -192,7 +204,7 @@ export const CourseDetail: React.FC = () => {
         </div>
 
         {/* Questions placeholder */}
-        <div className="course-detail-section-card">
+        <div className="course-detail-section-card panel-questions">
           <div className="section-card-header">
             <div className="section-card-icon questions-icon">
               <Question size={20} weight="duotone" />
@@ -201,7 +213,7 @@ export const CourseDetail: React.FC = () => {
               <h3 className="section-card-title">Câu hỏi luyện tập</h3>
               <p className="section-card-count">{course.questionsCount} câu hỏi</p>
             </div>
-            <button className="btn-section-action" disabled title="Sẽ hoàn thiện trong task Question Bank">
+            <button className="btn-section-action disabled-questions" disabled title="Sẽ hoàn thiện trong task Question Bank">
               <ArrowSquareOut size={14} weight="bold" />
               Xem câu hỏi
             </button>

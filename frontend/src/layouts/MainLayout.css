@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&display=swap');
+
 .layout-container {
   display: flex;
   height: 100dvh;
@@ -12,37 +14,41 @@
   display: flex;
   flex-direction: column;
   padding: 28px 24px 18px;
-  background: rgba(255, 255, 255, 0.45) !important;
-  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border: none !important;
+  box-shadow: 1px 0 0 0 rgba(226, 232, 240, 1) !important;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-bottom: 40px;
-  padding: 0 4px;
 }
 
 .sidebar-logo {
-  width: 72px;
-  height: 72px;
-  margin: -20px -24px -20px -20px;
+  width: 90px;
+  height: 90px;
+  margin-left: -12px;
+  margin-right: -24px;
+  margin-top: -16px;
+  margin-bottom: -16px;
   object-fit: contain;
 }
 
 .sidebar-header h2 {
-  color: var(--color-text-main);
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #0f172a;
+  font-weight: 800;
   font-size: 1.4rem;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .nav-item {
@@ -50,7 +56,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 10px;
   color: var(--color-text-muted);
   font-weight: 500;

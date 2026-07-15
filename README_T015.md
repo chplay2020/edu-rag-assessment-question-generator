@@ -4,7 +4,7 @@
 
 Đã hoàn thành phần giao diện chính cho trang danh sách môn học ở frontend theo yêu cầu của Task T015.
 
-Hiện tại task chưa thể hoàn thiện 100% với dữ liệu thật vì còn phụ thuộc vào Course API và các phần Auth/RBAC từ task backend của thành viên khác. Do đó frontend đang dùng mock data để đảm bảo giao diện, search và luồng điều hướng có thể chạy độc lập trong lúc chờ backend hoàn thiện/merge.
+Hiện tại task chưa thể hoàn thiện 100% với dữ liệu thật vì còn phụ thuộc vào Course API và các phần Auth/RBAC từ task backend. Do đó frontend đang dùng mock data để đảm bảo giao diện, search và luồng điều hướng có thể chạy độc lập trong lúc chờ backend hoàn thiện/merge.
 
 ## Thông tin task
 
@@ -53,7 +53,7 @@ Task T015 phụ thuộc vào Course API. Tuy nhiên phần backend API liên qua
 
 Cụ thể:
 
-- Course API từ task backend chưa hoàn thiện hoặc chưa được merge đầy đủ.
+- Course API từ task backend chưa hoàn thiện.
 - Auth/JWT/RBAC thật từ các task backend liên quan chưa hoàn tất, nên chưa thể lấy đúng danh sách môn học theo user đăng nhập thật.
 - Dữ liệu trả về từ backend thật có thể còn thay đổi, nên frontend hiện chỉ chuẩn bị mapping cơ bản và fallback về mock data.
 
