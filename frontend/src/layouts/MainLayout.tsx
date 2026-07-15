@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import './MainLayout.css';
 import { Button } from '../components/common/Button';
+import logo from '../assets/Logo.png';
 
 export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export const MainLayout: React.FC = () => {
       {/* Sidebar */}
       <aside className="sidebar glass-panel">
         <div className="sidebar-header">
+          <img src={logo} className="sidebar-logo" alt="Edu RAG Logo" />
           <h2>Edu RAG</h2>
         </div>
         <nav className="sidebar-nav">

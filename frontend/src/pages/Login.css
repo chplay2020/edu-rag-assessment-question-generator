@@ -17,11 +17,26 @@
   margin-bottom: 32px;
 }
 
+.login-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.login-logo {
+  width: 100px;
+  height: 100px;
+  margin: -30px -36px -30px -30px;
+  object-fit: contain;
+}
+
 .login-header h2 {
   color: var(--color-primary);
   font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
 .login-header p {

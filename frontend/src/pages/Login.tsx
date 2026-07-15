@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
+import logo from '../assets/Logo.png';
 import './Login.css';
 
 export const Login: React.FC = () => {
@@ -17,7 +18,10 @@ export const Login: React.FC = () => {
     <div className="login-container">
       <div className="login-card glass-panel">
         <div className="login-header">
-          <h2>Edu RAG</h2>
+          <div className="login-logo-container">
+            <img src={logo} className="login-logo" alt="Edu RAG Logo" />
+            <h2>Edu RAG</h2>
+          </div>
           <p>Assessment Question Generator</p>
         </div>
         
