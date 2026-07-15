@@ -21,9 +21,9 @@ export const MainLayout: React.FC = () => {
           <h2>Edu RAG</h2>
         </div>
         <nav className="sidebar-nav">
-          <Link to="/" className="nav-item active">Dashboard</Link>
-          <Link to="/questions" className="nav-item">Question Bank</Link>
-          <Link to="/courses" className="nav-item">Courses</Link>
+          <Link to="/" className="nav-item active">Tổng quan</Link>
+          <Link to="/questions" className="nav-item">Ngân hàng câu hỏi</Link>
+          <Link to="/courses" className="nav-item">Môn học</Link>
         </nav>
       </aside>
 
@@ -32,10 +32,10 @@ export const MainLayout: React.FC = () => {
         {/* Header */}
         <header className="header glass-panel">
           <div className="header-title">
-            <h3>Welcome back, Lecturer</h3>
+            <h3>Chào mừng trở lại, Giảng viên</h3>
           </div>
           <div className="header-actions">
-            <Button variant="secondary" size="sm" onClick={handleLogout}>Logout</Button>
+            <Button variant="secondary" size="sm" onClick={handleLogout}>Đăng xuất</Button>
           </div>
         </header>
 

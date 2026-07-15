@@ -19,23 +19,23 @@ export const Login: React.FC = () => {
       <div className="login-card glass-panel">
         <div className="login-header">
           <div className="login-logo-container">
-            <img src={logo} className="login-logo" alt="Edu RAG Logo" />
+            <img src={logo} className="login-logo" alt="Logo Edu RAG" />
             <h2>Edu RAG</h2>
           </div>
-          <p>Assessment Question Generator</p>
+          <p>Hệ thống tạo câu hỏi từ tài liệu học phần</p>
         </div>
         
         <form onSubmit={handleLogin} className="login-form">
           <div className="form-group">
-            <label>Email / Username</label>
-            <input type="text" placeholder="Enter your email" defaultValue="admin@edurag.com" />
+            <label>Email / Tên đăng nhập</label>
+            <input type="text" placeholder="Nhập email của bạn" defaultValue="admin@edurag.com" />
           </div>
           <div className="form-group">
-            <label>Password</label>
-            <input type="password" placeholder="Enter your password" defaultValue="password" />
+            <label>Mật khẩu</label>
+            <input type="password" placeholder="Nhập mật khẩu" defaultValue="password" />
           </div>
           <div className="login-actions">
-            <Button type="submit" variant="primary" fullWidth>Sign In</Button>
+            <Button type="submit" variant="primary" fullWidth>Đăng nhập</Button>
           </div>
         </form>
       </div>
