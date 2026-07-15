@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import logo from '../assets/Logo.png';
-import { Envelope, Lock, SignIn, Eye, EyeSlash } from '@phosphor-icons/react';
+import { Envelope, Lock, Eye, EyeSlash } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import './Login.css';
 

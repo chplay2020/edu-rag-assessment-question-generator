@@ -3,6 +3,8 @@ import { AuthGuard } from './routes/AuthGuard';
 import { MainLayout } from './layouts/MainLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { Courses } from './pages/Courses';
+import { CourseDetail } from './pages/CourseDetail';
 
 function App() {
   return (
@@ -15,8 +17,9 @@ function App() {
         <Route element={<AuthGuard />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/questions" element={<div style={{padding: '24px'}}><h2>Ngân hàng câu hỏi (Đang phát triển)</h2></div>} />
-            <Route path="/courses" element={<div style={{padding: '24px'}}><h2>Môn học (Đang phát triển)</h2></div>} />
+            <Route path="/questions" element={<div style={{ padding: '24px' }}><h2>Ngân hàng câu hỏi (Đang phát triển)</h2></div>} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
           </Route>
         </Route>
 
