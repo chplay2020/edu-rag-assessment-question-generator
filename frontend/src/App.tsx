@@ -15,8 +15,8 @@ function App() {
         <Route element={<AuthGuard />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/questions" element={<div style={{padding: '24px'}}><h2>Question Bank Placeholder</h2></div>} />
-            <Route path="/courses" element={<div style={{padding: '24px'}}><h2>Courses Placeholder</h2></div>} />
+            <Route path="/questions" element={<div style={{padding: '24px'}}><h2>Ngân hàng câu hỏi (Đang phát triển)</h2></div>} />
+            <Route path="/courses" element={<div style={{padding: '24px'}}><h2>Môn học (Đang phát triển)</h2></div>} />
           </Route>
         </Route>
 

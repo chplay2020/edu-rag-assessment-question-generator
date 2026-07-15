@@ -7,4 +7,5 @@ venv/
 .venv/
 __pycache__/
 *.py[cod]
-.agents/rules.md
+
+.agents/RULES.md
