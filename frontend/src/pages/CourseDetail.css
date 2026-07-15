@@ -191,6 +191,28 @@
   cursor: not-allowed;
 }
 
+.btn-action-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #3f3f46;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-edit:hover {
+  background-color: #f1f5f9;
+  color: var(--color-primary);
+  border-color: rgba(79, 70, 229, 0.25);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.05);
+}
+
 /* Main Row: Info + Stats */
 .course-detail-main-row {
   display: grid;

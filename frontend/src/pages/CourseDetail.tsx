@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   GraduationCap,
-  Clock,
   User,
   Calendar,
   PencilSimple,
@@ -11,7 +10,7 @@ import {
   BookOpen,
   Question
 } from '@phosphor-icons/react';
-import axios from 'axios';
+import { CourseFormModal } from '../components/courses/CourseFormModal';
 import './CourseDetail.css';
 
 interface Course {
@@ -24,6 +23,7 @@ interface Course {
   updated_at?: string | null;
   instructor?: string;
   semester?: string;
+  status?: 'active' | 'inactive';
 }
 
 const MOCK_COURSES: Course[] = [
@@ -41,6 +41,10 @@ export const CourseDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // States cho modal sửa
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'Vừa cập nhật';
     return new Date(dateStr).toLocaleDateString('vi-VN', {
@@ -51,24 +55,21 @@ export const CourseDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadCourse = async () => {
+    const loadCourse = () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`http://localhost:8000/api/v1/courses/${id}`, { timeout: 3000 });
-        if (response.data && response.data.id) {
-          const mock = MOCK_COURSES.find(c => c.id === Number(id));
-          setCourse({
-            instructor: mock?.instructor ?? 'Giảng viên phụ trách',
-            semester: mock?.semester ?? 'Học kỳ hiện tại',
-            ...response.data,
-            materialsCount: response.data.materialsCount ?? (mock?.materialsCount ?? Math.floor(Math.random() * 12) + 4),
-            questionsCount: response.data.questionsCount ?? (mock?.questionsCount ?? Math.floor(Math.random() * 150) + 30),
-          });
+        const local = localStorage.getItem('edu_courses');
+        const localCourses: Course[] = local ? JSON.parse(local) : MOCK_COURSES;
+        setAllCourses(localCourses);
+        const found = localCourses.find((c) => c.id === Number(id));
+        if (found) {
+          setCourse(found);
         } else {
-          throw new Error('Not found');
+          setNotFound(true);
         }
-      } catch {
-        const mock = MOCK_COURSES.find(c => c.id === Number(id));
+      } catch (err) {
+        console.error('Lỗi khi đọc course details', err);
+        const mock = MOCK_COURSES.find((c) => c.id === Number(id));
         if (mock) {
           setCourse(mock);
         } else {
@@ -80,6 +81,25 @@ export const CourseDetail: React.FC = () => {
     };
     loadCourse();
   }, [id]);
+
+  const handleOpenEditModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
+    if (!course) return;
+    const updatedCourse: Course = {
+      ...course,
+      ...courseData,
+      updated_at: new Date().toISOString(),
+    };
+    setCourse(updatedCourse);
+
+    const updatedList = allCourses.map((c) => (c.id === course.id ? updatedCourse : c));
+    setAllCourses(updatedList);
+    localStorage.setItem('edu_courses', JSON.stringify(updatedList));
+    setIsModalOpen(false);
+  };
 
   if (isLoading) {
     return (
@@ -132,7 +152,7 @@ export const CourseDetail: React.FC = () => {
         <div className="course-detail-header-right">
 
           <div className="course-detail-header-actions">
-            <button className="btn-action-disabled" disabled title="Chức năng thuộc task T016">
+            <button className="btn-action-edit" onClick={handleOpenEditModal}>
               <PencilSimple size={15} weight="bold" />
               Sửa môn học
             </button>
@@ -147,7 +167,6 @@ export const CourseDetail: React.FC = () => {
           <div className="course-detail-card-header-row">
             <h2 className="course-detail-card-title" style={{ marginBottom: 0 }}>Thông tin cơ bản</h2>
             <div className="course-detail-updated-inline">
-              <Clock size={15} weight="duotone" />
               <span>Cập nhật: {formatDate(course.updated_at)}</span>
             </div>
           </div>
@@ -224,6 +243,14 @@ export const CourseDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <CourseFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleFormSubmit}
+        course={course}
+        existingCourses={allCourses}
+      />
     </div>
   );
 };

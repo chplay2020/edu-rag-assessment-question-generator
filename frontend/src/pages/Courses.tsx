@@ -9,11 +9,11 @@ import {
   Rows,
   BookOpen,
   Question,
-  Clock,
   ArrowRight,
-  FolderOpen
+  FolderOpen,
+  PencilSimple
 } from '@phosphor-icons/react';
-import axios from 'axios';
+import { CourseFormModal } from '../components/courses/CourseFormModal';
 import './Courses.css';
 
 // Interface dữ liệu môn học
@@ -22,9 +22,12 @@ interface Course {
   title: string;
   code: string;
   description: string;
-  materialsCount: number; // mock
-  questionsCount: number; // mock
-  updated_at: string | null;
+  materialsCount?: number; // mock
+  questionsCount?: number; // mock
+  updated_at?: string | null;
+  instructor?: string;
+  semester?: string;
+  status?: 'active' | 'inactive';
 }
 
 // Mock Data 
@@ -37,6 +40,8 @@ const MOCK_COURSES: Course[] = [
     materialsCount: 12,
     questionsCount: 160,
     updated_at: '2026-07-14T08:30:00Z',
+    instructor: 'TS. Nguyễn Văn An',
+    semester: 'Học kỳ 2 – 2025-2026',
   },
   {
     id: 2,
@@ -46,6 +51,8 @@ const MOCK_COURSES: Course[] = [
     materialsCount: 8,
     questionsCount: 120,
     updated_at: '2026-07-13T10:15:00Z',
+    instructor: 'PGS. Trần Thị Bình',
+    semester: 'Học kỳ 2 – 2025-2026',
   },
   {
     id: 3,
@@ -55,6 +62,8 @@ const MOCK_COURSES: Course[] = [
     materialsCount: 15,
     questionsCount: 240,
     updated_at: '2026-07-12T14:45:00Z',
+    instructor: 'GS. Lê Hoàng Cường',
+    semester: 'Học kỳ 1 – 2025-2026',
   },
   {
     id: 4,
@@ -64,6 +73,8 @@ const MOCK_COURSES: Course[] = [
     materialsCount: 10,
     questionsCount: 150,
     updated_at: '2026-07-08T16:20:00Z',
+    instructor: 'TS. Phạm Minh Đức',
+    semester: 'Học kỳ 1 – 2025-2026',
   },
 ];
 
@@ -74,39 +85,68 @@ export const Courses: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Gọi API lấy dữ liệu môn học thực tế từ backend
+  // States cho modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  // Đọc dữ liệu từ localStorage khi load trang
   useEffect(() => {
-    const loadCourses = async () => {
-      setIsLoading(true);
-      try {
-        const response = await axios.get('http://localhost:8000/api/v1/courses', {
-          timeout: 3000
-        });
-
-        if (Array.isArray(response.data)) {
-          const mappedCourses = response.data.map((c: any) => ({
-            id: c.id,
-            title: c.title,
-            code: c.code || 'MÃ MÔN',
-            description: c.description || 'Chưa có mô tả cho môn học này.',
-            materialsCount: Math.floor(Math.random() * 12) + 4,
-            questionsCount: Math.floor(Math.random() * 150) + 30,
-            updated_at: c.updated_at || c.created_at || null,
-          }));
-          setCourses(mappedCourses);
-        } else {
-          throw new Error('Dữ liệu sai định dạng');
-        }
-      } catch (err) {
-        console.warn('Backend API connection failed, switching to Mock Data', err);
+    setIsLoading(true);
+    try {
+      const local = localStorage.getItem('edu_courses');
+      if (local) {
+        setCourses(JSON.parse(local));
+      } else {
         setCourses(MOCK_COURSES);
-      } finally {
-        setIsLoading(false);
+        localStorage.setItem('edu_courses', JSON.stringify(MOCK_COURSES));
       }
-    };
-
-    loadCourses();
+    } catch (err) {
+      console.error('Lỗi khi đọc localStorage', err);
+      setCourses(MOCK_COURSES);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  const handleOpenAddModal = () => {
+    setSelectedCourse(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (course: Course) => {
+    setSelectedCourse(course);
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
+    let updatedCourses: Course[];
+    if (selectedCourse) {
+      // Sửa môn học
+      updatedCourses = courses.map((c) =>
+        c.id === selectedCourse.id
+          ? {
+            ...c,
+            ...courseData,
+            updated_at: new Date().toISOString(),
+          }
+          : c
+      );
+    } else {
+      // Thêm môn học
+      const newId = courses.length > 0 ? Math.max(...courses.map((c) => c.id)) + 1 : 1;
+      const newCourse: Course = {
+        ...courseData,
+        id: newId,
+        materialsCount: 0,
+        questionsCount: 0,
+        updated_at: new Date().toISOString(),
+      };
+      updatedCourses = [newCourse, ...courses];
+    }
+    setCourses(updatedCourses);
+    localStorage.setItem('edu_courses', JSON.stringify(updatedCourses));
+    setIsModalOpen(false);
+  };
 
   // Lọc danh sách môn học theo ô tìm kiếm
   const filteredCourses = courses.filter(course => {
@@ -175,11 +215,11 @@ export const Courses: React.FC = () => {
           </p>
         </div>
 
-        {/* Nút Thêm Môn Học (Disabled) */}
+        {/* Nút Thêm Môn Học */}
         <button
-          disabled
+          onClick={handleOpenAddModal}
           className="btn-add-course"
-          title="Tính năng thêm môn học sẽ có ở T016"
+          title="Thêm môn học mới"
         >
           <Plus size={16} weight="bold" />
           <span>Thêm môn học</span>
@@ -252,12 +292,17 @@ export const Courses: React.FC = () => {
                         <span className="course-code-badge">
                           {course.code}
                         </span>
-                        {course.updated_at && (
-                          <span className="course-card-time">
-                            <Clock size={14} />
-                            {formatDate(course.updated_at)}
-                          </span>
-                        )}
+                        {/* Stats Info on Top-Right */}
+                        <div className="course-stats">
+                          <div className="stat-item stat-item-materials">
+                            <BookOpen size={14} weight="duotone" />
+                            <span>{course.materialsCount} <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>học liệu</span></span>
+                          </div>
+                          <div className="stat-item stat-item-questions">
+                            <Question size={14} weight="duotone" />
+                            <span>{course.questionsCount} <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>câu hỏi</span></span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Title & Description */}
@@ -270,25 +315,35 @@ export const Courses: React.FC = () => {
 
                       {/* Footer Area with Light Background */}
                       <div className="course-card-footer">
-                        {/* Stats Info */}
-                        <div className="course-stats">
-                          <div className="stat-item stat-item-materials">
-                            <BookOpen size={15} weight="duotone" />
-                            <span>{course.materialsCount} <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>học liệu</span></span>
-                          </div>
-                          <div className="stat-item stat-item-questions">
-                            <Question size={15} weight="duotone" />
-                            <span>{course.questionsCount} <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>câu hỏi</span></span>
-                          </div>
-                        </div>
+                        {/* Date info on Left */}
+                        {course.updated_at ? (
+                          <span className="course-card-time">
+                            <span>Cập nhật: {formatDate(course.updated_at)}</span>
+                          </span>
+                        ) : (
+                          <span className="course-card-time-empty" />
+                        )}
 
-                        {/* Nút Xem chi tiết */}
-                        <button
-                          onClick={() => navigate(`/courses/${course.id}`)}
-                          className="btn-course-detail"
-                        >
-                          Xem chi tiết <ArrowRight size={14} weight="bold" />
-                        </button>
+                        <div className="course-card-actions-group">
+                          <button
+                            className="btn-card-edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(course);
+                            }}
+                            title="Sửa môn học"
+                            aria-label="Sửa môn học"
+                          >
+                            <PencilSimple size={14} />
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            onClick={() => navigate(`/courses/${course.id}`)}
+                            className="btn-course-detail"
+                          >
+                            Xem chi tiết <ArrowRight size={14} weight="bold" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -355,6 +410,14 @@ export const Courses: React.FC = () => {
                     </div>
                     <div className="table-arrow-cell">
                       <button
+                        className="btn-table-edit"
+                        onClick={(e) => { e.stopPropagation(); handleOpenEditModal(course); }}
+                        title="Sửa môn học"
+                      >
+                        <PencilSimple size={13} />
+                        <span>Sửa</span>
+                      </button>
+                      <button
                         className="btn-table-detail"
                         onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
                       >
@@ -391,6 +454,14 @@ export const Courses: React.FC = () => {
           </motion.div>
         )}
       </div>
+
+      <CourseFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleFormSubmit}
+        course={selectedCourse}
+        existingCourses={courses}
+      />
     </motion.div>
   );
 };
