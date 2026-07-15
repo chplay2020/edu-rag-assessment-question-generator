@@ -1,0 +1,27 @@
+# Sử dụng Python 3.10 mỏng nhẹ
+FROM python:3.10-slim
+
+# Thiết lập thư mục làm việc trong container
+WORKDIR /app
+
+# Cài đặt các gói hệ thống cần thiết cho PostgreSQL (psycopg2) và các tiện ích cơ bản
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy file requirements vào trước để tận dụng Docker Cache
+COPY requirements.txt .
+
+# Cài đặt thư viện Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Do là môi trường Dev, ta không COPY toàn bộ source code vào đây.
+# Source code sẽ được mount trực tiếp qua volumes trong docker-compose
+# để hỗ trợ live-reloading.
+
+# Mở port 8000 cho FastAPI
+EXPOSE 8000
+
+# Lệnh mặc định chạy FastAPI với chế độ reload
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
