@@ -1,0 +1,17 @@
+# Sử dụng Node.js bản LTS (Debian-based) để tránh lỗi exec format trên Windows
+FROM node:20-slim
+
+# Thiết lập thư mục làm việc
+WORKDIR /app
+
+# Copy các file quản lý package vào trước
+COPY package.json package-lock.json* ./
+
+# Cài đặt dependencies
+RUN npm install
+
+# Mở port 5173 cho Vite
+EXPOSE 5173
+
+# Chạy server với host 0.0.0.0 để có thể truy cập từ máy host
+CMD ["npm", "run", "dev", "--", "--host"]
