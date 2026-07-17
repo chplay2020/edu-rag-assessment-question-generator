@@ -1,30 +1,27 @@
+from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 
-from pydantic import Field
+class CourseBase(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
 
-from app.schemas.base import BaseSchema
-
-
-class CourseBase(BaseSchema):
-    title: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
-    code: str | None = Field(default=None, max_length=100)
-
-
-# Không nhận created_by từ client; backend sẽ lấy từ user đăng nhập.
 class CourseCreate(CourseBase):
     pass
 
-
-class CourseUpdate(BaseSchema):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    code: str | None = Field(default=None, max_length=100)
-
+class CourseUpdate(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class CourseResponse(CourseBase):
     id: int
     created_by: int
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    is_deleted: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
