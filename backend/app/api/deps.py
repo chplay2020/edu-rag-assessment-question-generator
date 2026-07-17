@@ -57,3 +57,22 @@ def get_current_user_id(current_user: User = Depends(get_current_user)) -> int:
 
 def get_current_user_role(current_user: User = Depends(get_current_user)) -> str:
     return current_user.role
+
+def get_current_active_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Không đủ quyền truy cập (yêu cầu Admin)"
+        )
+    return current_user
+
+def get_current_active_lecturer(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    # Admin cũng có quyền của Lecturer
+    if current_user.role not in ["lecturer", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Không đủ quyền truy cập (yêu cầu Giảng viên)"
+        )
+    return current_user

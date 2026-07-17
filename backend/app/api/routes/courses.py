@@ -5,6 +5,7 @@ from app.api.deps import (
     get_current_user_id,
     get_current_user_role,
     get_db,
+    get_current_active_admin,
 )
 from app.schemas.course_schema import (
     CourseCreate,
@@ -32,6 +33,7 @@ not_found_response = {
     "",
     response_model=CourseResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_active_admin)]
 )
 def create_course(
     course_in: CourseCreate,
