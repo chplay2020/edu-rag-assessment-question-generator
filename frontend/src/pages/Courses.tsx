@@ -14,23 +14,11 @@ import {
   PencilSimple
 } from '@phosphor-icons/react';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
+import { fetchCourses, type Course } from '../services/courseApi';
 import './Courses.css';
 
-// Interface dữ liệu môn học
-interface Course {
-  id: number;
-  title: string;
-  code: string;
-  description: string;
-  materialsCount?: number; // mock
-  questionsCount?: number; // mock
-  updated_at?: string | null;
-  instructor?: string;
-  semester?: string;
-  status?: 'active' | 'inactive';
-}
-
-// Mock Data 
+// Mock Fallback Data
+// Dùng khi backend chưa chạy hoặc API lỗi.
 const MOCK_COURSES: Course[] = [
   {
     id: 1,
@@ -85,27 +73,33 @@ export const Courses: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
 
-  // States cho modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-  // Đọc dữ liệu từ localStorage khi load trang
+  // Load dữ liệu từ Course API (T014), fallback về mock nếu lỗi 
   useEffect(() => {
-    setIsLoading(true);
-    try {
-      const local = localStorage.getItem('edu_courses');
-      if (local) {
-        setCourses(JSON.parse(local));
-      } else {
-        setCourses(MOCK_COURSES);
-        localStorage.setItem('edu_courses', JSON.stringify(MOCK_COURSES));
+    let cancelled = false;
+    const loadCourses = async () => {
+      setIsLoading(true);
+      try {
+        const apiCourses = await fetchCourses();
+        if (!cancelled) {
+          setCourses(apiCourses);
+        }
+      } catch (err) {
+        // API lỗi hoặc backend chưa chạy → dùng mock data
+        console.warn('[T015] fetchCourses failed, using mock data:', err);
+        if (!cancelled) {
+          setCourses(MOCK_COURSES);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-    } catch (err) {
-      console.error('Lỗi khi đọc localStorage', err);
-      setCourses(MOCK_COURSES);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    loadCourses();
+    return () => { cancelled = true; };
   }, []);
 
   const handleOpenAddModal = () => {
@@ -118,21 +112,19 @@ export const Courses: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // NOTE: handleFormSubmit hiện chỉ cập nhật local state (không gọi PUT/POST API).
+  // Sẽ hoàn thiện trong task CRUD UI sau khi Auth/RBAC thật sẵn sàng.
   const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
     let updatedCourses: Course[];
     if (selectedCourse) {
-      // Sửa môn học
+      // Sửa môn học (local state only)
       updatedCourses = courses.map((c) =>
         c.id === selectedCourse.id
-          ? {
-            ...c,
-            ...courseData,
-            updated_at: new Date().toISOString(),
-          }
+          ? { ...c, ...courseData, updated_at: new Date().toISOString() }
           : c
       );
     } else {
-      // Thêm môn học
+      // Thêm môn học 
       const newId = courses.length > 0 ? Math.max(...courses.map((c) => c.id)) + 1 : 1;
       const newCourse: Course = {
         ...courseData,
@@ -144,7 +136,6 @@ export const Courses: React.FC = () => {
       updatedCourses = [newCourse, ...courses];
     }
     setCourses(updatedCourses);
-    localStorage.setItem('edu_courses', JSON.stringify(updatedCourses));
     setIsModalOpen(false);
   };
 
@@ -365,7 +356,7 @@ export const Courses: React.FC = () => {
                   <div className="table-desc-header">Mô tả chi tiết</div>
                   <div style={{ textAlign: 'center' }}>Học liệu</div>
                   <div style={{ textAlign: 'center' }}>Bộ câu hỏi</div>
-                  <div>Cập nhật cuối</div>
+                  <div style={{ textAlign: 'center' }}>Cập nhật cuối</div>
                   <div></div>
                 </div>
 
@@ -403,7 +394,7 @@ export const Courses: React.FC = () => {
                         <span>{course.questionsCount}</span>
                       </div>
                     </div>
-                    <div>
+                    <div className="table-time-cell">
                       <div className="table-time">
                         {course.updated_at ? formatDate(course.updated_at) : '—'}
                       </div>
@@ -421,7 +412,7 @@ export const Courses: React.FC = () => {
                         className="btn-table-detail"
                         onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
                       >
-                        Xem chi tiết <ArrowRight size={13} weight="bold" />
+                        <span>Xem chi tiết</span> <ArrowRight size={13} weight="bold" />
                       </button>
                     </div>
                   </div>

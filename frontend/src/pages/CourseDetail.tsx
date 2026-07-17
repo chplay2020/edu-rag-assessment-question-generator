@@ -11,21 +11,11 @@ import {
   Question
 } from '@phosphor-icons/react';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
+import { fetchCourseById, type Course } from '../services/courseApi';
 import './CourseDetail.css';
 
-interface Course {
-  id: number;
-  title: string;
-  code: string;
-  description: string;
-  materialsCount?: number;
-  questionsCount?: number;
-  updated_at?: string | null;
-  instructor?: string;
-  semester?: string;
-  status?: 'active' | 'inactive';
-}
-
+// Mock Fallback Data
+// Dùng khi backend chưa chạy hoặc API lỗi.
 const MOCK_COURSES: Course[] = [
   { id: 1, title: 'Lập trình Web nâng cao', code: 'INT3306', description: 'Xây dựng ứng dụng web hiện đại sử dụng React, Node.js, và các công nghệ Cloud tiên tiến.', materialsCount: 12, questionsCount: 160, updated_at: '2026-07-14T08:30:00Z', instructor: 'TS. Nguyễn Văn An', semester: 'Học kỳ 2 – 2025-2026' },
   { id: 2, title: 'Cơ sở dữ liệu', code: 'INT2208', description: 'Nguyên lý thiết kế cơ sở dữ liệu quan hệ, ngôn ngữ truy vấn SQL và tối ưu hóa hệ quản trị CSDL.', materialsCount: 8, questionsCount: 120, updated_at: '2026-07-13T10:15:00Z', instructor: 'PGS. Trần Thị Bình', semester: 'Học kỳ 2 – 2025-2026' },
@@ -54,37 +44,55 @@ export const CourseDetail: React.FC = () => {
     });
   };
 
+  // Load chi tiết môn học từ API, fallback về mock nếu lỗi 
   useEffect(() => {
-    const loadCourse = () => {
+    if (!id) {
+      setNotFound(true);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const numericId = Number(id);
+
+    const loadCourse = async () => {
       setIsLoading(true);
       try {
-        const local = localStorage.getItem('edu_courses');
-        const localCourses: Course[] = local ? JSON.parse(local) : MOCK_COURSES;
-        setAllCourses(localCourses);
-        const found = localCourses.find((c) => c.id === Number(id));
-        if (found) {
-          setCourse(found);
-        } else {
+        const apiCourse = await fetchCourseById(numericId);
+        if (cancelled) return;
+
+        if (apiCourse === null) {
+          // Backend trả 404 → không tìm thấy thật sự
           setNotFound(true);
+        } else {
+          setCourse(apiCourse);
+          setAllCourses([apiCourse]);
         }
       } catch (err) {
-        console.error('Lỗi khi đọc course details', err);
-        const mock = MOCK_COURSES.find((c) => c.id === Number(id));
-        if (mock) {
-          setCourse(mock);
-        } else {
-          setNotFound(true);
+        // Lỗi kết nối hoặc backend chưa chạy → fallback về mock
+        console.warn('[T015] fetchCourseById failed, falling back to mock:', err);
+        if (!cancelled) {
+          const mock = MOCK_COURSES.find((c) => c.id === numericId);
+          if (mock) {
+            setCourse(mock);
+            setAllCourses(MOCK_COURSES);
+          } else {
+            setNotFound(true);
+          }
         }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
+
     loadCourse();
+    return () => { cancelled = true; };
   }, [id]);
 
   const handleOpenEditModal = () => {
     setIsModalOpen(true);
   };
+
 
   const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
     if (!course) return;
@@ -94,10 +102,8 @@ export const CourseDetail: React.FC = () => {
       updated_at: new Date().toISOString(),
     };
     setCourse(updatedCourse);
-
     const updatedList = allCourses.map((c) => (c.id === course.id ? updatedCourse : c));
     setAllCourses(updatedList);
-    localStorage.setItem('edu_courses', JSON.stringify(updatedList));
     setIsModalOpen(false);
   };
 
@@ -148,9 +154,8 @@ export const CourseDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Header Right (Stats + Actions) */}
+        {/* Header Right (Actions) */}
         <div className="course-detail-header-right">
-
           <div className="course-detail-header-actions">
             <button className="btn-action-edit" onClick={handleOpenEditModal}>
               <PencilSimple size={15} weight="bold" />

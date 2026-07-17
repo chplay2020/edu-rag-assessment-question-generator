@@ -370,7 +370,7 @@
 
 .courses-table-header {
   display: grid;
-  grid-template-columns: 100px 220px 1fr 120px 120px 140px 130px;
+  grid-template-columns: 90px 200px 1fr 100px 100px 140px 210px;
   padding: 12px 24px;
   font-size: 0.75rem;
   font-weight: 700;
@@ -382,7 +382,7 @@
 .table-row-card {
   display: grid;
   /* Đồng bộ với header */
-  grid-template-columns: 100px 220px 1fr 120px 120px 140px 130px;
+  grid-template-columns: 90px 200px 1fr 100px 100px 140px 210px;
   align-items: center;
   background-color: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -475,6 +475,11 @@
 
 .table-stat-questions svg {
   color: #4f46e5;
+}
+
+.table-time-cell {
+  display: flex;
+  justify-content: center;
 }
 
 .table-time {
@@ -658,21 +663,31 @@
 /* Responsive */
 @media (max-width: 1024px) {
   .courses-table-header {
-    grid-template-columns: 100px 180px 1fr 100px 100px 120px 40px;
+    grid-template-columns: 90px 160px 1fr 80px 80px 110px 80px;
   }
 
   .table-row-card {
-    grid-template-columns: 100px 180px 1fr 100px 100px 120px 40px;
+    grid-template-columns: 90px 160px 1fr 80px 80px 110px 80px;
+  }
+
+  .btn-table-edit span,
+  .btn-table-detail span {
+    display: none;
+  }
+
+  .btn-table-edit,
+  .btn-table-detail {
+    padding: 7px 10px;
   }
 }
 
 @media (max-width: 840px) {
   .courses-table-header {
-    grid-template-columns: 90px 180px 90px 90px 110px 40px;
+    grid-template-columns: 90px 160px 80px 80px 110px 80px;
   }
 
   .table-row-card {
-    grid-template-columns: 90px 180px 90px 90px 110px 40px;
+    grid-template-columns: 90px 160px 80px 80px 110px 80px;
   }
 
   .courses-table-header .table-desc-header,
