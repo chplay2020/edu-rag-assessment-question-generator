@@ -1,49 +1,176 @@
-from fastapi import APIRouter
-from typing import List, Any
-from app.schemas.course_schema import CourseCreate, CourseUpdate, CourseResponse
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import (
+    get_current_user_id,
+    get_current_user_role,
+    get_db,
+)
+from app.schemas.course_schema import (
+    CourseCreate,
+    CourseResponse,
+    CourseUpdate,
+)
+from app.services import course_service
 
 router = APIRouter()
 
-@router.get("/", response_model=List[CourseResponse])
-def get_courses() -> Any:
-    """Lấy danh sách khóa học"""
-    return [
-        CourseResponse(
-            id=1, code="CS101", name="Intro to CS", 
-            description="Basic CS", is_active=True, 
-            created_by=1, created_at=datetime.now(), updated_at=datetime.now()
+# Mô tả phản hồi lỗi 404 trong tài liệu OpenAPI/Swagger.
+not_found_response = {
+    "description": "Course not found",
+    "content": {
+        "application/json": {
+            "example": {
+                "detail": "Course not found",
+            },
+        },
+    },
+}
+
+
+@router.post(
+    "",
+    response_model=CourseResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_course(
+    course_in: CourseCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    """Tạo một khóa học mới."""
+
+    return course_service.create_course(
+        db=db,
+        course_in=course_in,
+        created_by=current_user_id,
+        current_user_role=current_user_role,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[CourseResponse],
+)
+def list_courses(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    created_by: int | None = None,
+) -> list[CourseResponse]:
+    """Lấy danh sách khóa học chưa bị xóa mềm."""
+
+    return course_service.list_courses(
+        db=db,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+        skip=skip,
+        limit=limit,
+        created_by=created_by,
+    )
+
+
+@router.get(
+    "/{course_id}",
+    response_model=CourseResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: not_found_response,
+    },
+)
+def get_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    """Lấy thông tin chi tiết của một khóa học."""
+
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
-    ]
 
-@router.post("/", response_model=CourseResponse)
-def create_course(data: CourseCreate) -> Any:
-    """Tạo khóa học mới"""
-    return CourseResponse(
-        id=2, code=data.code, name=data.name, 
-        description=data.description, is_active=data.is_active, 
-        created_by=1, created_at=datetime.now(), updated_at=datetime.now()
+    return course
+
+
+@router.put(
+    "/{course_id}",
+    response_model=CourseResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: not_found_response,
+    },
+)
+def update_course(
+    course_id: int,
+    course_in: CourseUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    """Cập nhật thông tin khóa học."""
+
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
     )
 
-@router.get("/{course_id}", response_model=CourseResponse)
-def get_course(course_id: int) -> Any:
-    """Lấy thông tin chi tiết khóa học"""
-    return CourseResponse(
-        id=course_id, code="CS101", name="Intro to CS", 
-        description="Basic CS", is_active=True, 
-        created_by=1, created_at=datetime.now(), updated_at=datetime.now()
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    return course_service.update_course(
+        db=db,
+        db_obj=course,
+        course_in=course_in,
+        current_user_role=current_user_role,
     )
 
-@router.put("/{course_id}", response_model=CourseResponse)
-def update_course(course_id: int, data: CourseUpdate) -> Any:
-    """Cập nhật thông tin khóa học"""
-    return CourseResponse(
-        id=course_id, code=data.code or "CS101", name=data.name or "Intro to CS", 
-        description=data.description, is_active=True, 
-        created_by=1, created_at=datetime.now(), updated_at=datetime.now()
+
+@router.delete(
+    "/{course_id}",
+    response_model=CourseResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: not_found_response,
+    },
+)
+def delete_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    """Xóa mềm một khóa học."""
+
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
     )
 
-@router.delete("/{course_id}")
-def delete_course(course_id: int) -> Any:
-    """Xóa khóa học"""
-    return {"message": "Xóa thành công"}
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    return course_service.soft_delete_course(
+        db=db,
+        db_obj=course,
+        current_user_role=current_user_role,
+    )
