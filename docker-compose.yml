@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Database Service (PostgreSQL + pgvector)
   db:
-    image: ankane/pgvector:v0.5.1
+    image: pgvector/pgvector:pg15
     # Dùng image pgvector được build sẵn trên nền Postgres 15 thay cho postgres thuần
     container_name: edu_rag_db
     restart: always
