@@ -1,13 +1,13 @@
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, HTTPException, status
-
+from app.api.deps import get_db, get_current_user_id, get_current_user_role
 from app.schemas.course_schema import CourseCreate, CourseResponse, CourseUpdate
+from app.services import course_service
 
 router = APIRouter()
 
-_courses: dict[int, CourseResponse] = {}
-_next_course_id = 1
+# Schema phản hồi lỗi 404 mặc định cho tài liệu OpenAPI Swagger
 not_found_response = {
     "description": "Course not found",
     "content": {
@@ -19,30 +19,41 @@ not_found_response = {
 
 
 @router.post("", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
-def create_course(course_in: CourseCreate) -> CourseResponse:
-    global _next_course_id
-
-    course = CourseResponse(
-        id=_next_course_id,
-        created_by=1,
-        created_at=datetime.now(),
-        updated_at=None,
-        is_deleted=False,
-        **course_in.model_dump(),
+def create_course(
+    course_in: CourseCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    
+    #Tạo khóa học mới.
+    return course_service.create_course(
+        db=db,
+        course_in=course_in,
+        created_by=current_user_id,
+        current_user_role=current_user_role
     )
-    _courses[_next_course_id] = course
-    _next_course_id += 1
-    return course
 
 
 @router.get("", response_model=list[CourseResponse])
-def list_courses(created_by: int | None = None) -> list[CourseResponse]:
-    courses = [course for course in _courses.values() if not course.is_deleted]
-
-    if created_by is not None:
-        courses = [course for course in courses if course.created_by == created_by]
-
-    return courses
+def list_courses(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    created_by: int | None = None,
+) -> list[CourseResponse]:
+   
+    # Lấy danh sách các khóa học (không bao gồm khóa học đã bị xóa mềm).
+    return course_service.list_courses(
+        db=db,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+        skip=skip,
+        limit=limit,
+        created_by=created_by
+    )
 
 
 @router.get(
@@ -50,9 +61,21 @@ def list_courses(created_by: int | None = None) -> list[CourseResponse]:
     response_model=CourseResponse,
     responses={status.HTTP_404_NOT_FOUND: not_found_response},
 )
-def get_course(course_id: int) -> CourseResponse:
-    course = _courses.get(course_id)
-    if course is None or course.is_deleted:
+def get_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+    
+    # Lấy thông tin chi tiết một khóa học.
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
+    if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Course not found",
@@ -65,23 +88,32 @@ def get_course(course_id: int) -> CourseResponse:
     response_model=CourseResponse,
     responses={status.HTTP_404_NOT_FOUND: not_found_response},
 )
-def update_course(course_id: int, course_in: CourseUpdate) -> CourseResponse:
-    course = _courses.get(course_id)
-    if course is None or course.is_deleted:
+def update_course(
+    course_id: int,
+    course_in: CourseUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+
+    # Cập nhật thông tin khóa học.
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
+    if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Course not found",
         )
-
-    update_data = course_in.model_dump(exclude_unset=True)
-    updated_course = course.model_copy(
-        update={
-            **update_data,
-            "updated_at": datetime.now(),
-        }
+    return course_service.update_course(
+        db=db,
+        db_obj=course,
+        course_in=course_in,
+        current_user_role=current_user_role
     )
-    _courses[course_id] = updated_course
-    return updated_course
 
 
 @router.delete(
@@ -89,19 +121,27 @@ def update_course(course_id: int, course_in: CourseUpdate) -> CourseResponse:
     response_model=CourseResponse,
     responses={status.HTTP_404_NOT_FOUND: not_found_response},
 )
-def delete_course(course_id: int) -> CourseResponse:
-    course = _courses.get(course_id)
-    if course is None or course.is_deleted:
+def delete_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> CourseResponse:
+
+    # Xóa mềm một khóa học.
+    course = course_service.get_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
+    if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Course not found",
         )
-
-    deleted_course = course.model_copy(
-        update={
-            "is_deleted": True,
-            "updated_at": datetime.now(),
-        }
+    return course_service.soft_delete_course(
+        db=db,
+        db_obj=course,
+        current_user_role=current_user_role
     )
-    _courses[course_id] = deleted_course
-    return deleted_course
