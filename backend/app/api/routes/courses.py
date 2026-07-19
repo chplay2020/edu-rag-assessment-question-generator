@@ -5,6 +5,7 @@ from app.api.deps import (
     get_current_user_id,
     get_current_user_role,
     get_db,
+    get_current_active_admin,
 )
 from app.schemas.course_schema import (
     CourseCreate,
@@ -47,6 +48,7 @@ forbidden_response = {
     responses={
         status.HTTP_403_FORBIDDEN: forbidden_response,
     },
+    dependencies=[Depends(get_current_active_admin)],
 )
 def create_course(
     course_in: CourseCreate,

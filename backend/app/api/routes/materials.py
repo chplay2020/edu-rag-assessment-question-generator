@@ -1,11 +1,12 @@
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Depends
+from app.api.deps import get_current_active_lecturer
 from typing import List, Any
 from app.schemas.material_schema import MaterialResponse
 from datetime import datetime
 
 router = APIRouter()
 
-@router.post("/upload", response_model=MaterialResponse)
+@router.post("/upload", response_model=MaterialResponse, dependencies=[Depends(get_current_active_lecturer)])
 def upload_material(course_id: int = Form(...), file: UploadFile = File(...)) -> Any:
     """Upload tài liệu học tập (PDF, DOCX)"""
     return MaterialResponse(
