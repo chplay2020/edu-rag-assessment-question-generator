@@ -154,6 +154,19 @@
   box-sizing: border-box;
 }
 
+.form-input:disabled,
+.form-textarea:disabled {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.btn-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -201,10 +214,24 @@
 .modal-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 12px;
   padding: 18px 28px;
   border-top: 1px solid #f1f5f9;
   background-color: #f8fafc;
+  flex-wrap: wrap;
+}
+
+.modal-submit-error {
+  flex: 1 1 100%;
+  font-size: 0.8rem;
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  line-height: 1.45;
 }
 
 @keyframes modalFadeIn {

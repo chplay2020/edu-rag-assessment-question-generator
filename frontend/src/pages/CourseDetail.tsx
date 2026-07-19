@@ -4,23 +4,22 @@ import {
   ArrowLeft,
   GraduationCap,
   User,
-  Calendar,
   PencilSimple,
   ArrowSquareOut,
   BookOpen,
   Question
 } from '@phosphor-icons/react';
-import { CourseFormModal } from '../components/courses/CourseFormModal';
-import { fetchCourseById, type Course } from '../services/courseApi';
+import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
+import { fetchCourseById, updateCourse, saveLocalUiExtras, type Course } from '../services/courseApi';
 import './CourseDetail.css';
 
 // Mock Fallback Data
 // Dùng khi backend chưa chạy hoặc API lỗi.
 const MOCK_COURSES: Course[] = [
-  { id: 1, title: 'Lập trình Web nâng cao', code: 'INT3306', description: 'Xây dựng ứng dụng web hiện đại sử dụng React, Node.js, và các công nghệ Cloud tiên tiến.', materialsCount: 12, questionsCount: 160, updated_at: '2026-07-14T08:30:00Z', instructor: 'TS. Nguyễn Văn An', semester: 'Học kỳ 2 – 2025-2026' },
-  { id: 2, title: 'Cơ sở dữ liệu', code: 'INT2208', description: 'Nguyên lý thiết kế cơ sở dữ liệu quan hệ, ngôn ngữ truy vấn SQL và tối ưu hóa hệ quản trị CSDL.', materialsCount: 8, questionsCount: 120, updated_at: '2026-07-13T10:15:00Z', instructor: 'PGS. Trần Thị Bình', semester: 'Học kỳ 2 – 2025-2026' },
-  { id: 3, title: 'Trí tuệ nhân tạo', code: 'INT3401', description: 'Tìm hiểu các thuật toán tìm kiếm, biểu diễn tri thức, học máy (Machine Learning) và mạng nơ-ron.', materialsCount: 15, questionsCount: 240, updated_at: '2026-07-12T14:45:00Z', instructor: 'GS. Lê Hoàng Cường', semester: 'Học kỳ 1 – 2025-2026' },
-  { id: 4, title: 'Mạng máy tính', code: 'INT2215', description: 'Kiến trúc phân tầng của mạng máy tính, các giao thức mạng phổ biến TCP/IP và bảo mật mạng cơ bản.', materialsCount: 10, questionsCount: 150, updated_at: '2026-07-08T16:20:00Z', instructor: 'TS. Phạm Minh Đức', semester: 'Học kỳ 1 – 2025-2026' },
+  { id: 1, title: 'Lập trình Web nâng cao', code: 'INT3306', description: 'Xây dựng ứng dụng web hiện đại sử dụng React, Node.js, và các công nghệ Cloud tiên tiến.', materialsCount: 12, questionsCount: 160, updated_at: '2026-07-14T08:30:00Z', instructor: 'TS. Nguyễn Văn An' },
+  { id: 2, title: 'Cơ sở dữ liệu', code: 'INT2208', description: 'Nguyên lý thiết kế cơ sở dữ liệu quan hệ, ngôn ngữ truy vấn SQL và tối ưu hóa hệ quản trị CSDL.', materialsCount: 8, questionsCount: 120, updated_at: '2026-07-13T10:15:00Z', instructor: 'PGS. Trần Thị Bình' },
+  { id: 3, title: 'Trí tuệ nhân tạo', code: 'INT3401', description: 'Tìm hiểu các thuật toán tìm kiếm, biểu diễn tri thức, học máy (Machine Learning) và mạng nơ-ron.', materialsCount: 15, questionsCount: 240, updated_at: '2026-07-12T14:45:00Z', instructor: 'GS. Lê Hoàng Cường' },
+  { id: 4, title: 'Mạng máy tính', code: 'INT2215', description: 'Kiến trúc phân tầng của mạng máy tính, các giao thức mạng phổ biến TCP/IP và bảo mật mạng cơ bản.', materialsCount: 10, questionsCount: 150, updated_at: '2026-07-08T16:20:00Z', instructor: 'TS. Phạm Minh Đức' },
 ];
 
 
@@ -31,9 +30,10 @@ export const CourseDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // States cho modal sửa
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'Vừa cập nhật';
@@ -90,21 +90,54 @@ export const CourseDetail: React.FC = () => {
   }, [id]);
 
   const handleOpenEditModal = () => {
+    setSubmitError(null);
     setIsModalOpen(true);
   };
 
-
-  const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
-    if (!course) return;
-    const updatedCourse: Course = {
-      ...course,
-      ...courseData,
-      updated_at: new Date().toISOString(),
-    };
-    setCourse(updatedCourse);
-    const updatedList = allCourses.map((c) => (c.id === course.id ? updatedCourse : c));
-    setAllCourses(updatedList);
+  const handleCloseModal = () => {
+    if (isSubmitting) return;
     setIsModalOpen(false);
+    setSubmitError(null);
+  };
+
+
+  const handleFormSubmit = async (payload: CourseFormPayload): Promise<void> => {
+    if (!course) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const apiResult = await updateCourse(course.id, {
+        title: payload.title,
+        code: payload.code || null,
+        description: payload.description || null,
+      });
+
+      // Lưu local UI extras để mapApiCourse luôn lấy được khi reload
+      saveLocalUiExtras(course.id, payload.instructor);
+      
+      // Merge instructor từ payload vào kết quả API
+      const merged = {
+        ...apiResult,
+        instructor: payload.instructor || course.instructor,
+      };
+      setCourse(merged);
+      setAllCourses([merged]);
+      setIsModalOpen(false);
+      setSubmitError(null);
+    } catch (err: unknown) {
+      console.error('[T016] updateCourse failed:', err);
+      const axiosMsg =
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.message ??
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.detail ??
+        null;
+      setSubmitError(
+        axiosMsg ?? 'Không thể cập nhật môn học. Vui lòng thử lại.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -185,15 +218,6 @@ export const CourseDetail: React.FC = () => {
                 <span className="info-chip-value">{course.instructor ?? '—'}</span>
               </div>
             </div>
-            <div className="info-chip-row">
-              <div className="info-chip-icon-wrapper">
-                <Calendar size={16} weight="duotone" />
-              </div>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Học kỳ</span>
-                <span className="info-chip-value">{course.semester ?? '—'}</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -251,10 +275,12 @@ export const CourseDetail: React.FC = () => {
 
       <CourseFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         course={course}
         existingCourses={allCourses}
+        isSubmitting={isSubmitting}
+        submitError={submitError}
       />
     </div>
   );

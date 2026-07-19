@@ -16,12 +16,23 @@ interface Course {
   status?: 'active' | 'inactive';
 }
 
+// Payload chỉ gồm các field backend nhận: title, code, description.
+// Các field UI-only (instructor, materialsCount, ...) không gửi lên API.
+export interface CourseFormPayload {
+  title: string;
+  code: string;
+  description: string;
+  instructor: string;
+}
+
 interface CourseFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => void;
+  onSubmit: (payload: CourseFormPayload) => Promise<void>;
   course: Course | null;
   existingCourses: Course[];
+  isSubmitting?: boolean;
+  submitError?: string | null;
 }
 
 export const CourseFormModal: React.FC<CourseFormModalProps> = ({
@@ -30,13 +41,14 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
   onSubmit,
   course,
   existingCourses,
+  isSubmitting = false,
+  submitError = null,
 }) => {
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [instructor, setInstructor] = useState('');
-  const [semester, setSemester] = useState('');
-  
+
   const [errors, setErrors] = useState<{
     code?: string;
     title?: string;
@@ -50,13 +62,11 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
         setTitle(course.title || '');
         setDescription(course.description || '');
         setInstructor(course.instructor || '');
-        setSemester(course.semester || '');
       } else {
         setCode('');
         setTitle('');
         setDescription('');
         setInstructor('');
-        setSemester('');
       }
       setErrors({});
     }
@@ -64,9 +74,9 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: typeof errors = {};
     const trimmedCode = code.trim();
     const trimmedTitle = title.trim();
@@ -82,11 +92,11 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
         newErrors.code = 'Mã môn học này đã tồn tại';
       }
     }
-    
+
     if (!trimmedTitle) {
       newErrors.title = 'Tên môn học là bắt buộc';
     }
-    
+
     if (!trimmedDescription) {
       newErrors.description = 'Mô tả môn học là bắt buộc';
     }
@@ -96,15 +106,12 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
       return;
     }
 
-    onSubmit({
-      id: course ? course.id : 0,
+    // Gọi async handler ở parent – parent xử lý API, đóng modal, hoặc set lỗi
+    await onSubmit({
       code: trimmedCode,
       title: trimmedTitle,
       description: trimmedDescription,
       instructor: instructor.trim(),
-      semester: semester.trim(),
-      status: course?.status || 'active', // Giữ nguyên trạng thái cũ hoặc mặc định là active ngầm
-      updated_at: new Date().toISOString(),
     });
   };
 
@@ -119,7 +126,7 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={isSubmitting ? undefined : onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-header-title-area">
@@ -128,7 +135,12 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
               {course ? 'Cập nhật thông tin môn học.' : 'Nhập thông tin để tạo môn học mới.'}
             </p>
           </div>
-          <button className="btn-close" onClick={onClose} aria-label="Đóng">
+          <button
+            className="btn-close"
+            onClick={onClose}
+            aria-label="Đóng"
+            disabled={isSubmitting}
+          >
             <X size={20} />
           </button>
         </div>
@@ -144,6 +156,7 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
                   placeholder="Ví dụ: INT3306"
                   value={code}
                   onChange={(e) => handleFieldChange('code', e.target.value)}
+                  disabled={isSubmitting}
                 />
                 {errors.code && <span className="error-text">{errors.code}</span>}
               </div>
@@ -157,6 +170,7 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
                   placeholder="Ví dụ: Lập trình Web nâng cao"
                   value={title}
                   onChange={(e) => handleFieldChange('title', e.target.value)}
+                  disabled={isSubmitting}
                 />
                 {errors.title && <span className="error-text">{errors.title}</span>}
               </div>
@@ -171,6 +185,7 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
                 value={description}
                 rows={3}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
+                disabled={isSubmitting}
               />
               {errors.description && <span className="error-text">{errors.description}</span>}
             </div>
@@ -185,28 +200,24 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
                   placeholder="Ví dụ: TS. Nguyễn Văn An"
                   value={instructor}
                   onChange={(e) => setInstructor(e.target.value)}
-                />
-              </div>
-              <div className="form-group flex-1">
-                <label htmlFor="course-semester">Học kỳ</label>
-                <input
-                  id="course-semester"
-                  type="text"
-                  className="form-input"
-                  placeholder="Ví dụ: Học kỳ 2 – 2025-2026"
-                  value={semester}
-                  onChange={(e) => setSemester(e.target.value)}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
           </div>
 
           <div className="modal-footer">
-            <Button variant="secondary" size="md" type="button" onClick={onClose}>
+            {/* Hiển thị lỗi API nếu có */}
+            {submitError && (
+              <p className="modal-submit-error" role="alert">
+                {submitError}
+              </p>
+            )}
+            <Button variant="secondary" size="md" type="button" onClick={onClose} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button variant="primary" size="md" type="submit">
-              {course ? 'Lưu thay đổi' : 'Tạo môn học'}
+            <Button variant="primary" size="md" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang lưu...' : (course ? 'Lưu thay đổi' : 'Tạo môn học')}
             </Button>
           </div>
         </form>

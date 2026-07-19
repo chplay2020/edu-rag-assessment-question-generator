@@ -24,27 +24,47 @@ export interface Course {
   questionsCount?: number;  // Placeholder – backend chưa có, chờ Question API
   updated_at?: string | null;
   instructor?: string;      // Placeholder – backend chưa có
-  semester?: string;        // Placeholder – backend chưa có
   status?: 'active' | 'inactive';
 }
 
 // Mock Lookup (dùng để giữ số liệu demo khi id trùng) 
-const MOCK_EXTRAS: Record<number, Pick<Course, 'materialsCount' | 'questionsCount' | 'instructor' | 'semester'>> = {
-  1: { materialsCount: 12, questionsCount: 160, instructor: 'TS. Nguyễn Văn An', semester: 'Học kỳ 2 – 2025-2026' },
-  2: { materialsCount: 8, questionsCount: 120, instructor: 'PGS. Trần Thị Bình', semester: 'Học kỳ 2 – 2025-2026' },
-  3: { materialsCount: 15, questionsCount: 240, instructor: 'GS. Lê Hoàng Cường', semester: 'Học kỳ 1 – 2025-2026' },
-  4: { materialsCount: 10, questionsCount: 150, instructor: 'TS. Phạm Minh Đức', semester: 'Học kỳ 1 – 2025-2026' },
+const MOCK_EXTRAS: Record<number, Pick<Course, 'materialsCount' | 'questionsCount' | 'instructor'>> = {
+  1: { materialsCount: 12, questionsCount: 160, instructor: 'TS. Nguyễn Văn An' },
+  2: { materialsCount: 8, questionsCount: 120, instructor: 'PGS. Trần Thị Bình' },
+  3: { materialsCount: 15, questionsCount: 240, instructor: 'GS. Lê Hoàng Cường' },
+  4: { materialsCount: 10, questionsCount: 150, instructor: 'TS. Phạm Minh Đức' },
 };
 
-// Chuyển đổi CourseApiResponse (backend) → Course (frontend).
-// Các field chưa có từ backend (materialsCount, questionsCount, instructor, semester)
+// Helper functions để lưu/lấy các thông tin UI-only (instructor) vốn không có trong schema database backend.
+// Điều này giúp giữ giá trị người dùng nhập sau khi load lại danh sách hoặc tải lại trang.
+export function saveLocalUiExtras(id: number, instructor: string): void {
+  try {
+    const dataStr = localStorage.getItem('edu_course_ui_extras');
+    const data = dataStr ? JSON.parse(dataStr) : {};
+    data[id] = { instructor };
+    localStorage.setItem('edu_course_ui_extras', JSON.stringify(data));
+  } catch (err) {
+    console.error('[T016] Error saving local UI extras:', err);
+  }
+}
+
+export function getLocalUiExtras(id: number): { instructor?: string } | null {
+  try {
+    const dataStr = localStorage.getItem('edu_course_ui_extras');
+    if (!dataStr) return null;
+    const data = JSON.parse(dataStr);
+    return data[id] || null;
+  } catch {
+    return null;
+  }
+}
 
 export function mapApiCourse(raw: CourseApiResponse): Course {
-  const extras = MOCK_EXTRAS[raw.id] ?? {
+  const localExtras = getLocalUiExtras(raw.id);
+  const mockExtras = MOCK_EXTRAS[raw.id] ?? {
     materialsCount: 0,
     questionsCount: 0,
     instructor: 'Giảng viên phụ trách',
-    semester: 'Học kỳ hiện tại',
   };
 
   return {
@@ -54,7 +74,9 @@ export function mapApiCourse(raw: CourseApiResponse): Course {
     description: raw.description ?? '',
     updated_at: raw.updated_at ?? raw.created_at,
     status: 'active',
-    ...extras,
+    materialsCount: mockExtras.materialsCount,
+    questionsCount: mockExtras.questionsCount,
+    instructor: localExtras?.instructor ?? mockExtras.instructor,
   };
 }
 
@@ -89,4 +111,34 @@ export async function fetchCourseById(id: number): Promise<Course | null> {
     }
     throw err;
   }
+}
+
+// Payload gửi lên khi tạo/sửa môn học.
+// Backend chỉ nhận title, code, description – các field khác (instructor, semester) là placeholder local.
+export interface CourseCreatePayload {
+  title: string;
+  code?: string | null;
+  description?: string | null;
+}
+
+export interface CourseUpdatePayload {
+  title?: string | null;
+  code?: string | null;
+  description?: string | null;
+}
+
+// Tạo môn học mới
+export async function createCourse(payload: CourseCreatePayload): Promise<Course> {
+  const res = await axios.post<CourseApiResponse>(`${BASE_URL}/api/v1/courses`, payload, {
+    timeout: 8000,
+  });
+  return mapApiCourse(res.data);
+}
+
+// Cập nhật môn học
+export async function updateCourse(id: number, payload: CourseUpdatePayload): Promise<Course> {
+  const res = await axios.put<CourseApiResponse>(`${BASE_URL}/api/v1/courses/${id}`, payload, {
+    timeout: 8000,
+  });
+  return mapApiCourse(res.data);
 }

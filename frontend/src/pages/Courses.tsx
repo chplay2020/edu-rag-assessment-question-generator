@@ -13,8 +13,8 @@ import {
   FolderOpen,
   PencilSimple
 } from '@phosphor-icons/react';
-import { CourseFormModal } from '../components/courses/CourseFormModal';
-import { fetchCourses, type Course } from '../services/courseApi';
+import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
+import { fetchCourses, createCourse, updateCourse, saveLocalUiExtras, type Course } from '../services/courseApi';
 import './Courses.css';
 
 // Mock Fallback Data
@@ -29,7 +29,6 @@ const MOCK_COURSES: Course[] = [
     questionsCount: 160,
     updated_at: '2026-07-14T08:30:00Z',
     instructor: 'TS. Nguyễn Văn An',
-    semester: 'Học kỳ 2 – 2025-2026',
   },
   {
     id: 2,
@@ -40,7 +39,6 @@ const MOCK_COURSES: Course[] = [
     questionsCount: 120,
     updated_at: '2026-07-13T10:15:00Z',
     instructor: 'PGS. Trần Thị Bình',
-    semester: 'Học kỳ 2 – 2025-2026',
   },
   {
     id: 3,
@@ -51,7 +49,6 @@ const MOCK_COURSES: Course[] = [
     questionsCount: 240,
     updated_at: '2026-07-12T14:45:00Z',
     instructor: 'GS. Lê Hoàng Cường',
-    semester: 'Học kỳ 1 – 2025-2026',
   },
   {
     id: 4,
@@ -62,7 +59,6 @@ const MOCK_COURSES: Course[] = [
     questionsCount: 150,
     updated_at: '2026-07-08T16:20:00Z',
     instructor: 'TS. Phạm Minh Đức',
-    semester: 'Học kỳ 1 – 2025-2026',
   },
 ];
 
@@ -75,6 +71,8 @@ export const Courses: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Load dữ liệu từ Course API (T014), fallback về mock nếu lỗi 
   useEffect(() => {
@@ -104,39 +102,74 @@ export const Courses: React.FC = () => {
 
   const handleOpenAddModal = () => {
     setSelectedCourse(null);
+    setSubmitError(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (course: Course) => {
     setSelectedCourse(course);
+    setSubmitError(null);
     setIsModalOpen(true);
   };
 
-  // NOTE: handleFormSubmit hiện chỉ cập nhật local state (không gọi PUT/POST API).
-  // Sẽ hoàn thiện trong task CRUD UI sau khi Auth/RBAC thật sẵn sàng.
-  const handleFormSubmit = (courseData: Omit<Course, 'materialsCount' | 'questionsCount'>) => {
-    let updatedCourses: Course[];
-    if (selectedCourse) {
-      // Sửa môn học (local state only)
-      updatedCourses = courses.map((c) =>
-        c.id === selectedCourse.id
-          ? { ...c, ...courseData, updated_at: new Date().toISOString() }
-          : c
-      );
-    } else {
-      // Thêm môn học 
-      const newId = courses.length > 0 ? Math.max(...courses.map((c) => c.id)) + 1 : 1;
-      const newCourse: Course = {
-        ...courseData,
-        id: newId,
-        materialsCount: 0,
-        questionsCount: 0,
-        updated_at: new Date().toISOString(),
-      };
-      updatedCourses = [newCourse, ...courses];
-    }
-    setCourses(updatedCourses);
+  const handleCloseModal = () => {
+    if (isSubmitting) return;
     setIsModalOpen(false);
+    setSubmitError(null);
+  };
+
+  const handleFormSubmit = async (payload: CourseFormPayload): Promise<void> => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      if (selectedCourse) {
+        // Sửa môn học
+        const apiResult = await updateCourse(selectedCourse.id, {
+          title: payload.title,
+          code: payload.code || null,
+          description: payload.description || null,
+        });
+        saveLocalUiExtras(selectedCourse.id, payload.instructor);
+        const merged = {
+          ...apiResult,
+          instructor: payload.instructor || selectedCourse.instructor,
+        };
+        setCourses((prev) => prev.map((c) => (c.id === selectedCourse.id ? merged : c)));
+      } else {
+        // Tạo môn học mới
+        const apiResult = await createCourse({
+          title: payload.title,
+          code: payload.code || null,
+          description: payload.description || null,
+        });
+
+        saveLocalUiExtras(apiResult.id, payload.instructor);
+
+        const merged = {
+          ...apiResult,
+          instructor: payload.instructor || apiResult.instructor,
+        };
+        setCourses((prev) => [merged, ...prev]);
+      }
+      setIsModalOpen(false);
+      setSubmitError(null);
+    } catch (err: unknown) {
+      console.error('[T016] Course submit failed:', err);
+      const axiosMsg =
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.message ??
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.detail ??
+        null;
+      setSubmitError(
+        axiosMsg ??
+        (selectedCourse
+          ? 'Không thể cập nhật môn học. Vui lòng thử lại.'
+          : 'Không thể tạo môn học. Vui lòng thử lại.')
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Lọc danh sách môn học theo ô tìm kiếm
@@ -448,10 +481,12 @@ export const Courses: React.FC = () => {
 
       <CourseFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         course={selectedCourse}
         existingCourses={courses}
+        isSubmitting={isSubmitting}
+        submitError={submitError}
       />
     </motion.div>
   );
