@@ -7,33 +7,30 @@ import {
   PencilSimple,
   ArrowSquareOut,
   BookOpen,
-  Question
+  Question,
+  Trash,
+  WarningCircle,
+  X
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
-import { fetchCourseById, updateCourse, saveLocalUiExtras, type Course } from '../services/courseApi';
+import { fetchCourseById, updateCourse, deleteCourse, type Course } from '../services/courseApi';
 import './CourseDetail.css';
-
-// Mock Fallback Data
-// Dùng khi backend chưa chạy hoặc API lỗi.
-const MOCK_COURSES: Course[] = [
-  { id: 1, title: 'Lập trình Web nâng cao', code: 'INT3306', description: 'Xây dựng ứng dụng web hiện đại sử dụng React, Node.js, và các công nghệ Cloud tiên tiến.', materialsCount: 12, questionsCount: 160, updated_at: '2026-07-14T08:30:00Z', instructor: 'TS. Nguyễn Văn An' },
-  { id: 2, title: 'Cơ sở dữ liệu', code: 'INT2208', description: 'Nguyên lý thiết kế cơ sở dữ liệu quan hệ, ngôn ngữ truy vấn SQL và tối ưu hóa hệ quản trị CSDL.', materialsCount: 8, questionsCount: 120, updated_at: '2026-07-13T10:15:00Z', instructor: 'PGS. Trần Thị Bình' },
-  { id: 3, title: 'Trí tuệ nhân tạo', code: 'INT3401', description: 'Tìm hiểu các thuật toán tìm kiếm, biểu diễn tri thức, học máy (Machine Learning) và mạng nơ-ron.', materialsCount: 15, questionsCount: 240, updated_at: '2026-07-12T14:45:00Z', instructor: 'GS. Lê Hoàng Cường' },
-  { id: 4, title: 'Mạng máy tính', code: 'INT2215', description: 'Kiến trúc phân tầng của mạng máy tính, các giao thức mạng phổ biến TCP/IP và bảo mật mạng cơ bản.', materialsCount: 10, questionsCount: 150, updated_at: '2026-07-08T16:20:00Z', instructor: 'TS. Phạm Minh Đức' },
-];
-
-
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // States for Delete Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'Vừa cập nhật';
@@ -44,50 +41,42 @@ export const CourseDetail: React.FC = () => {
     });
   };
 
-  // Load chi tiết môn học từ API, fallback về mock nếu lỗi 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!id) {
       setNotFound(true);
       setIsLoading(false);
       return;
     }
 
-    let cancelled = false;
-    const numericId = Number(id);
+    setIsLoading(true);
+    setNotFound(false);
+    setPageError(null);
 
-    const loadCourse = async () => {
-      setIsLoading(true);
-      try {
-        const apiCourse = await fetchCourseById(numericId);
-        if (cancelled) return;
-
-        if (apiCourse === null) {
-          // Backend trả 404 → không tìm thấy thật sự
-          setNotFound(true);
-        } else {
-          setCourse(apiCourse);
-          setAllCourses([apiCourse]);
-        }
-      } catch (err) {
-        // Lỗi kết nối hoặc backend chưa chạy → fallback về mock
-        console.warn('[T015] fetchCourseById failed, falling back to mock:', err);
-        if (!cancelled) {
-          const mock = MOCK_COURSES.find((c) => c.id === numericId);
-          if (mock) {
-            setCourse(mock);
-            setAllCourses(MOCK_COURSES);
-          } else {
-            setNotFound(true);
-          }
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
+    try {
+      const apiCourse = await fetchCourseById(Number(id));
+      if (apiCourse === null) {
+        setNotFound(true);
+      } else {
+        setCourse(apiCourse);
       }
-    };
+    } catch (err: any) {
+      console.error('[T015] fetchCourseById failed:', err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('access_token');
+        navigate('/login');
+      } else if (err.response?.status === 404) {
+        setNotFound(true);
+      } else {
+        setPageError('Đã xảy ra lỗi khi tải thông tin môn học.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadCourse();
-    return () => { cancelled = true; };
-  }, [id]);
+  useEffect(() => {
+    fetchData();
+  }, [id, navigate]);
 
   const handleOpenEditModal = () => {
     setSubmitError(null);
@@ -112,16 +101,7 @@ export const CourseDetail: React.FC = () => {
         description: payload.description || null,
       });
 
-      // Lưu local UI extras để mapApiCourse luôn lấy được khi reload
-      saveLocalUiExtras(course.id, payload.instructor);
-      
-      // Merge instructor từ payload vào kết quả API
-      const merged = {
-        ...apiResult,
-        instructor: payload.instructor || course.instructor,
-      };
-      setCourse(merged);
-      setAllCourses([merged]);
+      setCourse(apiResult);
       setIsModalOpen(false);
       setSubmitError(null);
     } catch (err: unknown) {
@@ -140,12 +120,58 @@ export const CourseDetail: React.FC = () => {
     }
   };
 
+  const handleDeleteCourse = async () => {
+    if (!course) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCourse(course.id);
+      setIsDeleteModalOpen(false);
+      navigate('/courses');
+    } catch (err: unknown) {
+      console.error('[T017] deleteCourse failed:', err);
+      const axiosMsg =
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.message ??
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.detail ??
+        null;
+      setDeleteError(
+        axiosMsg ?? 'Không thể xóa môn học. Vui lòng thử lại sau.'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="course-detail-container">
         <div className="course-detail-loading">
           <div className="loading-spinner"></div>
           <p>Đang tải thông tin môn học...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="course-detail-container">
+        <button className="btn-back" onClick={() => navigate('/courses')}>
+          <ArrowLeft size={16} weight="bold" /> Quay lại danh sách
+        </button>
+        <div className="course-detail-not-found">
+          <Question size={48} weight="duotone" color="#dc2626" />
+          <h2>Đã xảy ra lỗi</h2>
+          <p>{pageError}</p>
+          <button
+            className="btn-action-edit"
+            style={{ marginTop: '16px', border: '1px solid #ccc' }}
+            onClick={fetchData}
+          >
+            Thử lại
+          </button>
         </div>
       </div>
     );
@@ -273,15 +299,89 @@ export const CourseDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* DANGER ZONE */}
+      <div className="course-detail-danger-zone">
+        <div className="danger-zone-info">
+          <h3>Xóa môn học này</h3>
+          <p>Hành động này không thể hoàn tác. Toàn bộ dữ liệu sẽ bị xóa vĩnh viễn.</p>
+        </div>
+        <button
+          className="btn-danger-outline"
+          onClick={() => {
+            setDeleteError(null);
+            setIsDeleteModalOpen(true);
+          }}
+        >
+          Xóa môn học
+        </button>
+      </div>
+
       <CourseFormModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         course={course}
-        existingCourses={allCourses}
+        existingCourses={course ? [course] : []}
         isSubmitting={isSubmitting}
         submitError={submitError}
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-backdrop" onClick={isDeleting ? undefined : () => setIsDeleteModalOpen(false)}>
+          <div className="modal-container delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-header-title-area">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="danger-icon-wrapper">
+                    <WarningCircle size={24} weight="fill" color="#dc2626" />
+                  </div>
+                  <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 700 }}>Xóa môn học</h3>
+                </div>
+              </div>
+              <button
+                className="btn-close"
+                onClick={() => setIsDeleteModalOpen(false)}
+                aria-label="Đóng"
+                disabled={isDeleting}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-form" style={{ padding: '24px 32px' }}>
+              <p style={{ margin: '0 0 24px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
+                Môn học <strong>{course?.code} - {course?.title}</strong> và toàn bộ tài liệu, câu hỏi liên quan sẽ bị xóa khỏi hệ thống. Hành động này không thể phục hồi.
+              </p>
+
+              {deleteError && (
+                <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626', color: '#991b1b', fontSize: '0.9rem', borderRadius: '4px' }}>
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="modal-footer" style={{ padding: 0, borderTop: 'none', backgroundColor: 'transparent' }}>
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn-danger"
+                  onClick={handleDeleteCourse}
+                  disabled={isDeleting}
+                >
+                  <Trash size={16} weight="bold" />
+                  {isDeleting ? 'Đang xóa...' : 'Xóa môn học'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

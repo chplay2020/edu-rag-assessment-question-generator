@@ -11,94 +11,70 @@ import {
   Question,
   ArrowRight,
   FolderOpen,
-  PencilSimple
+  PencilSimple,
+  X,
+  DotsThreeVertical,
+  Trash,
+  WarningCircle
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
-import { fetchCourses, createCourse, updateCourse, saveLocalUiExtras, type Course } from '../services/courseApi';
+import { fetchCourses, createCourse, updateCourse, deleteCourse, type Course } from '../services/courseApi';
 import './Courses.css';
-
-// Mock Fallback Data
-// Dùng khi backend chưa chạy hoặc API lỗi.
-const MOCK_COURSES: Course[] = [
-  {
-    id: 1,
-    title: 'Lập trình Web nâng cao',
-    code: 'INT3306',
-    description: 'Xây dựng ứng dụng web hiện đại sử dụng React, Node.js, và các công nghệ Cloud tiên tiến.',
-    materialsCount: 12,
-    questionsCount: 160,
-    updated_at: '2026-07-14T08:30:00Z',
-    instructor: 'TS. Nguyễn Văn An',
-  },
-  {
-    id: 2,
-    title: 'Cơ sở dữ liệu',
-    code: 'INT2208',
-    description: 'Nguyên lý thiết kế cơ sở dữ liệu quan hệ, ngôn ngữ truy vấn SQL và tối ưu hóa hệ quản trị CSDL.',
-    materialsCount: 8,
-    questionsCount: 120,
-    updated_at: '2026-07-13T10:15:00Z',
-    instructor: 'PGS. Trần Thị Bình',
-  },
-  {
-    id: 3,
-    title: 'Trí tuệ nhân tạo',
-    code: 'INT3401',
-    description: 'Tìm hiểu các thuật toán tìm kiếm, biểu diễn tri thức, học máy (Machine Learning) và mạng nơ-ron.',
-    materialsCount: 15,
-    questionsCount: 240,
-    updated_at: '2026-07-12T14:45:00Z',
-    instructor: 'GS. Lê Hoàng Cường',
-  },
-  {
-    id: 4,
-    title: 'Mạng máy tính',
-    code: 'INT2215',
-    description: 'Kiến trúc phân tầng của mạng máy tính, các giao thức mạng phổ biến TCP/IP và bảo mật mạng cơ bản.',
-    materialsCount: 10,
-    questionsCount: 150,
-    updated_at: '2026-07-08T16:20:00Z',
-    instructor: 'TS. Phạm Minh Đức',
-  },
-];
 
 export const Courses: React.FC = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Độ trễ thanh tìm kiếm
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Load dữ liệu từ Course API (T014), fallback về mock nếu lỗi 
+  // States for Dropdown & Delete Modal
+  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
-    let cancelled = false;
-    const loadCourses = async () => {
-      setIsLoading(true);
-      try {
-        const apiCourses = await fetchCourses();
-        if (!cancelled) {
-          setCourses(apiCourses);
-        }
-      } catch (err) {
-        // API lỗi hoặc backend chưa chạy → dùng mock data
-        console.warn('[T015] fetchCourses failed, using mock data:', err);
-        if (!cancelled) {
-          setCourses(MOCK_COURSES);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-    loadCourses();
-    return () => { cancelled = true; };
+    const handleClickOutside = () => setActiveDropdownId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  // Load dữ liệu từ Course API (T014)
+  const loadCourses = async () => {
+    setIsLoading(true);
+    try {
+      const apiCourses = await fetchCourses();
+      setCourses(apiCourses);
+    } catch (err: any) {
+      console.error('[T015] fetchCourses failed:', err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('access_token');
+        navigate('/login');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCourses();
+  }, [navigate]);
 
   const handleOpenAddModal = () => {
     setSelectedCourse(null);
@@ -129,12 +105,7 @@ export const Courses: React.FC = () => {
           code: payload.code || null,
           description: payload.description || null,
         });
-        saveLocalUiExtras(selectedCourse.id, payload.instructor);
-        const merged = {
-          ...apiResult,
-          instructor: payload.instructor || selectedCourse.instructor,
-        };
-        setCourses((prev) => prev.map((c) => (c.id === selectedCourse.id ? merged : c)));
+        setCourses((prev) => prev.map((c) => (c.id === selectedCourse.id ? apiResult : c)));
       } else {
         // Tạo môn học mới
         const apiResult = await createCourse({
@@ -142,14 +113,7 @@ export const Courses: React.FC = () => {
           code: payload.code || null,
           description: payload.description || null,
         });
-
-        saveLocalUiExtras(apiResult.id, payload.instructor);
-
-        const merged = {
-          ...apiResult,
-          instructor: payload.instructor || apiResult.instructor,
-        };
-        setCourses((prev) => [merged, ...prev]);
+        setCourses((prev) => [apiResult, ...prev]);
       }
       setIsModalOpen(false);
       setSubmitError(null);
@@ -172,9 +136,40 @@ export const Courses: React.FC = () => {
     }
   };
 
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCourse(courseToDelete.id);
+      setCourses((prev) => prev.filter((c) => c.id !== courseToDelete.id));
+      setIsDeleteModalOpen(false);
+      setCourseToDelete(null);
+    } catch (err: unknown) {
+      console.error('[T017] deleteCourse failed:', err);
+      const axiosMsg =
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.message ??
+        (err as { response?: { data?: { message?: string; detail?: string } } })
+          ?.response?.data?.detail ??
+        null;
+      setDeleteError(
+        axiosMsg ?? 'Không thể xóa môn học. Vui lòng thử lại sau.'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (course: Course) => {
+    setCourseToDelete(course);
+    setDeleteError(null);
+    setIsDeleteModalOpen(true);
+  };
+
   // Lọc danh sách môn học theo ô tìm kiếm
   const filteredCourses = courses.filter(course => {
-    const query = searchQuery.toLowerCase().trim();
+    const query = debouncedSearchQuery.toLowerCase().trim();
     if (!query) return true;
     return (
       course.title.toLowerCase().includes(query) ||
@@ -349,18 +344,46 @@ export const Courses: React.FC = () => {
                         )}
 
                         <div className="course-card-actions-group">
-                          <button
-                            className="btn-card-edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEditModal(course);
-                            }}
-                            title="Sửa môn học"
-                            aria-label="Sửa môn học"
-                          >
-                            <PencilSimple size={14} />
-                            <span>Sửa</span>
-                          </button>
+                          <div className="course-card-dropdown-wrapper">
+                            <button
+                              className="btn-course-kebab"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownId(activeDropdownId === course.id ? null : course.id);
+                              }}
+                              title="Tùy chọn"
+                            >
+                              <DotsThreeVertical size={20} weight="bold" />
+                            </button>
+                            
+                            {activeDropdownId === course.id && (
+                              <div className="course-card-dropdown-menu">
+                                <button
+                                  className="dropdown-item"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdownId(null);
+                                    handleOpenEditModal(course);
+                                  }}
+                                >
+                                  <PencilSimple size={16} />
+                                  Sửa môn học
+                                </button>
+                                <button
+                                  className="dropdown-item text-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdownId(null);
+                                    openDeleteModal(course);
+                                  }}
+                                >
+                                  <Trash size={16} />
+                                  Xóa môn học
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
                           <button
                             onClick={() => navigate(`/courses/${course.id}`)}
                             className="btn-course-detail"
@@ -433,14 +456,46 @@ export const Courses: React.FC = () => {
                       </div>
                     </div>
                     <div className="table-arrow-cell">
-                      <button
-                        className="btn-table-edit"
-                        onClick={(e) => { e.stopPropagation(); handleOpenEditModal(course); }}
-                        title="Sửa môn học"
-                      >
-                        <PencilSimple size={13} />
-                        <span>Sửa</span>
-                      </button>
+                      <div className="course-card-dropdown-wrapper" style={{ position: 'relative' }}>
+                        <button
+                          className="btn-course-kebab"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdownId(activeDropdownId === course.id ? null : course.id);
+                          }}
+                          title="Tùy chọn"
+                        >
+                          <DotsThreeVertical size={20} weight="bold" />
+                        </button>
+                        
+                        {activeDropdownId === course.id && (
+                          <div className="course-card-dropdown-menu" style={{ right: 0, top: '100%', zIndex: 10 }}>
+                            <button
+                              className="dropdown-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownId(null);
+                                handleOpenEditModal(course);
+                              }}
+                            >
+                              <PencilSimple size={16} />
+                              Sửa môn học
+                            </button>
+                            <button
+                              className="dropdown-item text-danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownId(null);
+                                openDeleteModal(course);
+                              }}
+                            >
+                              <Trash size={16} />
+                              Xóa môn học
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <button
                         className="btn-table-detail"
                         onClick={(e) => { e.stopPropagation(); navigate(`/courses/${course.id}`); }}
@@ -453,21 +508,46 @@ export const Courses: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        ) : (
-          /* Empty Search Results */
+        ) : courses.length === 0 && !searchQuery.trim() ? (
+          // Ko có môn học
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="empty-state"
+            className="empty-state-compact"
           >
-            <div className="empty-state-icon">
-              <FolderOpen size={30} weight="duotone" />
+            <div className="empty-state-compact-icon">
+              <FolderOpen size={36} weight="duotone" />
             </div>
-            <h4 className="empty-state-title">
+            <h4 className="empty-state-compact-title">
+              Bạn chưa có môn học nào
+            </h4>
+            <p className="empty-state-compact-desc">
+              Tạo không gian đầu tiên để lưu trữ tài liệu và ngân hàng câu hỏi.
+            </p>
+            <button
+              onClick={handleOpenAddModal}
+              className="btn-add-course"
+              style={{ marginTop: '16px' }}
+            >
+              <Plus size={16} weight="bold" style={{ marginRight: '6px' }} />
+              Thêm môn học
+            </button>
+          </motion.div>
+        ) : (
+          // Ko có môn học khi search
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="empty-state-compact"
+          >
+            <div className="empty-state-compact-icon">
+              <FolderOpen size={36} weight="duotone" />
+            </div>
+            <h4 className="empty-state-compact-title">
               Không tìm thấy môn học nào
             </h4>
-            <p className="empty-state-desc">
-              Không tìm thấy môn học nào phù hợp với từ khóa "{searchQuery}". Hãy thử thay đổi bộ lọc hoặc xóa từ khóa tìm kiếm.
+            <p className="empty-state-compact-desc">
+              Không tìm thấy môn học nào phù hợp với từ khóa "{searchQuery}". Hãy thử điều chỉnh hoặc xóa từ khóa tìm kiếm.
             </p>
             <button
               onClick={() => setSearchQuery('')}
@@ -488,6 +568,66 @@ export const Courses: React.FC = () => {
         isSubmitting={isSubmitting}
         submitError={submitError}
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-backdrop" onClick={isDeleting ? undefined : () => setIsDeleteModalOpen(false)}>
+          <div className="modal-container delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-header-title-area">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#dc2626' }}>
+                  <WarningCircle size={24} weight="bold" />
+                  <h3 style={{ margin: 0, color: '#dc2626' }}>Xác nhận xóa môn học</h3>
+                </div>
+              </div>
+              <button
+                className="btn-close"
+                onClick={() => setIsDeleteModalOpen(false)}
+                aria-label="Đóng"
+                disabled={isDeleting}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-form" style={{ padding: '24px 32px' }}>
+              <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
+                Bạn có chắc chắn muốn xóa môn học <strong>{courseToDelete?.code} - {courseToDelete?.title}</strong> không?
+              </p>
+              <p style={{ margin: '0 0 24px 0', fontSize: '0.95rem', color: '#dc2626', fontWeight: 500 }}>
+                Cảnh báo: Hành động này không thể hoàn tác! Toàn bộ dữ liệu liên quan sẽ bị mất.
+              </p>
+              
+              {deleteError && (
+                <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626', color: '#991b1b', fontSize: '0.9rem', borderRadius: '4px' }}>
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="modal-footer" style={{ padding: 0, borderTop: 'none', backgroundColor: 'transparent' }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569' }}
+                  onClick={() => setIsDeleteModalOpen(false)} 
+                  disabled={isDeleting}
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-primary" 
+                  style={{ padding: '10px 20px', borderRadius: '10px', backgroundColor: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}
+                  onClick={handleDeleteCourse} 
+                  disabled={isDeleting}
+                >
+                  <Trash size={16} weight="bold" />
+                  {isDeleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

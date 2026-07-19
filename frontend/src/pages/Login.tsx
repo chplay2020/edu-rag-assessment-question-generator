@@ -1,20 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Button } from '../components/common/Button';
 import logo from '../assets/Logo.png';
 import { Envelope, Lock, Eye, EyeSlash } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import './Login.css';
 
+const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000';
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = React.useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('password');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Giả lập đăng nhập thành công
-    localStorage.setItem('isAuthenticated', 'true');
-    navigate('/');
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append('username', email); // OAuth2 expects 'username'
+      formData.append('password', password);
+
+      const response = await axios.post(`${BASE_URL}/api/v1/auth/login`, formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      const data = response.data;
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        navigate('/');
+      } else {
+        setError('Đăng nhập thất bại: Không nhận được token');
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      const msg = err.response?.data?.detail || err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const containerVariants = {
@@ -47,10 +79,21 @@ export const Login: React.FC = () => {
         </div>
 
         <form onSubmit={handleLogin} className="login-form">
+          {error && (
+            <div style={{ color: '#dc2626', backgroundColor: '#fef2f2', padding: '10px 14px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+              {error}
+            </div>
+          )}
+
           <div className="form-group">
             <label>Email / Tên đăng nhập</label>
             <div className="input-wrapper">
-              <input type="text" placeholder="Nhập email của bạn" defaultValue="admin@edurag.com" />
+              <input 
+                type="text" 
+                placeholder="Nhập email của bạn" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
               <Envelope size={18} />
             </div>
           </div>
@@ -61,7 +104,8 @@ export const Login: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Nhập mật khẩu"
-                defaultValue="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 style={{
                   width: '100%',
                   display: 'block',
@@ -104,8 +148,8 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="login-actions">
-            <Button type="submit" variant="primary" fullWidth>
-              Đăng nhập
+            <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
+              {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </div>
         </form>

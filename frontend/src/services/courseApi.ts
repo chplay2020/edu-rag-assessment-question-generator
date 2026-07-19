@@ -4,6 +4,21 @@ import axios from 'axios';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000';
 
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 8000,
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 export interface CourseApiResponse {
   id: number;
   title: string;
@@ -27,46 +42,7 @@ export interface Course {
   status?: 'active' | 'inactive';
 }
 
-// Mock Lookup (dùng để giữ số liệu demo khi id trùng) 
-const MOCK_EXTRAS: Record<number, Pick<Course, 'materialsCount' | 'questionsCount' | 'instructor'>> = {
-  1: { materialsCount: 12, questionsCount: 160, instructor: 'TS. Nguyễn Văn An' },
-  2: { materialsCount: 8, questionsCount: 120, instructor: 'PGS. Trần Thị Bình' },
-  3: { materialsCount: 15, questionsCount: 240, instructor: 'GS. Lê Hoàng Cường' },
-  4: { materialsCount: 10, questionsCount: 150, instructor: 'TS. Phạm Minh Đức' },
-};
-
-// Helper functions để lưu/lấy các thông tin UI-only (instructor) vốn không có trong schema database backend.
-// Điều này giúp giữ giá trị người dùng nhập sau khi load lại danh sách hoặc tải lại trang.
-export function saveLocalUiExtras(id: number, instructor: string): void {
-  try {
-    const dataStr = localStorage.getItem('edu_course_ui_extras');
-    const data = dataStr ? JSON.parse(dataStr) : {};
-    data[id] = { instructor };
-    localStorage.setItem('edu_course_ui_extras', JSON.stringify(data));
-  } catch (err) {
-    console.error('[T016] Error saving local UI extras:', err);
-  }
-}
-
-export function getLocalUiExtras(id: number): { instructor?: string } | null {
-  try {
-    const dataStr = localStorage.getItem('edu_course_ui_extras');
-    if (!dataStr) return null;
-    const data = JSON.parse(dataStr);
-    return data[id] || null;
-  } catch {
-    return null;
-  }
-}
-
 export function mapApiCourse(raw: CourseApiResponse): Course {
-  const localExtras = getLocalUiExtras(raw.id);
-  const mockExtras = MOCK_EXTRAS[raw.id] ?? {
-    materialsCount: 0,
-    questionsCount: 0,
-    instructor: 'Giảng viên phụ trách',
-  };
-
   return {
     id: raw.id,
     title: raw.title,
@@ -74,9 +50,9 @@ export function mapApiCourse(raw: CourseApiResponse): Course {
     description: raw.description ?? '',
     updated_at: raw.updated_at ?? raw.created_at,
     status: 'active',
-    materialsCount: mockExtras.materialsCount,
-    questionsCount: mockExtras.questionsCount,
-    instructor: localExtras?.instructor ?? mockExtras.instructor,
+    materialsCount: 0,
+    questionsCount: 0,
+    instructor: 'Chưa cập nhật',
   };
 }
 
@@ -85,9 +61,7 @@ export function mapApiCourse(raw: CourseApiResponse): Course {
 // Trả về mảng Course hoặc ném lỗi (caller tự xử lý fallback).
 
 export async function fetchCourses(): Promise<Course[]> {
-  const res = await axios.get<CourseApiResponse[]>(`${BASE_URL}/api/v1/courses`, {
-    timeout: 8000,
-  });
+  const res = await apiClient.get<CourseApiResponse[]>(`/api/v1/courses`);
 
   if (!Array.isArray(res.data)) {
     throw new Error('Invalid response format from GET /api/v1/courses');
@@ -101,9 +75,7 @@ export async function fetchCourses(): Promise<Course[]> {
 
 export async function fetchCourseById(id: number): Promise<Course | null> {
   try {
-    const res = await axios.get<CourseApiResponse>(`${BASE_URL}/api/v1/courses/${id}`, {
-      timeout: 8000,
-    });
+    const res = await apiClient.get<CourseApiResponse>(`/api/v1/courses/${id}`);
     return mapApiCourse(res.data);
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 404) {
@@ -129,16 +101,17 @@ export interface CourseUpdatePayload {
 
 // Tạo môn học mới
 export async function createCourse(payload: CourseCreatePayload): Promise<Course> {
-  const res = await axios.post<CourseApiResponse>(`${BASE_URL}/api/v1/courses`, payload, {
-    timeout: 8000,
-  });
+  const res = await apiClient.post<CourseApiResponse>(`/api/v1/courses`, payload);
   return mapApiCourse(res.data);
 }
 
 // Cập nhật môn học
 export async function updateCourse(id: number, payload: CourseUpdatePayload): Promise<Course> {
-  const res = await axios.put<CourseApiResponse>(`${BASE_URL}/api/v1/courses/${id}`, payload, {
-    timeout: 8000,
-  });
+  const res = await apiClient.put<CourseApiResponse>(`/api/v1/courses/${id}`, payload);
   return mapApiCourse(res.data);
+}
+
+// Xóa môn học (soft delete)
+export async function deleteCourse(id: number): Promise<void> {
+  await apiClient.delete(`/api/v1/courses/${id}`);
 }

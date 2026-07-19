@@ -66,11 +66,9 @@ User ID và role được lấy từ JWT thông qua các dependency trong `app/a
 
 Đảm bảo PostgreSQL đang chạy và database đã được tạo. Cấu hình kết nối trong `.env`:
 
-```
 DATABASE_URL=postgresql://user:password@localhost:5432/yourdb
 SECRET_KEY=your-secret-key
 ALGORITHM=HS256
-```
 
 ### 2. Chạy Alembic migration
 

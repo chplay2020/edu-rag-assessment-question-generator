@@ -11,18 +11,15 @@ interface Course {
   materialsCount?: number;
   questionsCount?: number;
   updated_at?: string | null;
-  instructor?: string;
   semester?: string;
   status?: 'active' | 'inactive';
 }
 
-// Payload chỉ gồm các field backend nhận: title, code, description.
-// Các field UI-only (instructor, materialsCount, ...) không gửi lên API.
+// Payload  gồm các field backend nhận: title, code, description.
 export interface CourseFormPayload {
   title: string;
   code: string;
   description: string;
-  instructor: string;
 }
 
 interface CourseFormModalProps {
@@ -47,7 +44,6 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [instructor, setInstructor] = useState('');
 
   const [errors, setErrors] = useState<{
     code?: string;
@@ -61,12 +57,10 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
         setCode(course.code || '');
         setTitle(course.title || '');
         setDescription(course.description || '');
-        setInstructor(course.instructor || '');
       } else {
         setCode('');
         setTitle('');
         setDescription('');
-        setInstructor('');
       }
       setErrors({});
     }
@@ -89,7 +83,7 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
         (c) => c.code.trim().toLowerCase() === trimmedCode.toLowerCase() && (!course || c.id !== course.id)
       );
       if (isDuplicate) {
-        newErrors.code = 'Mã môn học này đã tồn tại';
+        newErrors.code = 'Mã môn học đã tồn tại. Vui lòng chọn mã khác.';
       }
     }
 
@@ -111,7 +105,6 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
       code: trimmedCode,
       title: trimmedTitle,
       description: trimmedDescription,
-      instructor: instructor.trim(),
     });
   };
 
@@ -188,21 +181,6 @@ export const CourseFormModal: React.FC<CourseFormModalProps> = ({
                 disabled={isSubmitting}
               />
               {errors.description && <span className="error-text">{errors.description}</span>}
-            </div>
-
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label htmlFor="course-instructor">Giảng viên phụ trách</label>
-                <input
-                  id="course-instructor"
-                  type="text"
-                  className="form-input"
-                  placeholder="Ví dụ: TS. Nguyễn Văn An"
-                  value={instructor}
-                  onChange={(e) => setInstructor(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
             </div>
           </div>
 
