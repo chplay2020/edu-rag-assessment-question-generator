@@ -12,8 +12,9 @@ const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http:/
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState(localStorage.getItem('remembered_email') || '');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('remembered_email'));
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,6 +37,11 @@ export const Login: React.FC = () => {
       const data = response.data;
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
+        if (rememberMe) {
+          localStorage.setItem('remembered_email', email);
+        } else {
+          localStorage.removeItem('remembered_email');
+        }
         navigate('/');
       } else {
         setError('Đăng nhập thất bại: Không nhận được token');
@@ -89,10 +95,13 @@ export const Login: React.FC = () => {
             <label>Email / Tên đăng nhập</label>
             <div className="input-wrapper">
               <input 
+                id="email"
+                name="email"
                 type="text" 
                 placeholder="Nhập email của bạn" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
               />
               <Envelope size={18} />
             </div>
@@ -102,10 +111,13 @@ export const Login: React.FC = () => {
             <label>Mật khẩu</label>
             <div className="input-wrapper">
               <input
+                id="password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Nhập mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 style={{
                   width: '100%',
                   display: 'block',
@@ -139,7 +151,11 @@ export const Login: React.FC = () => {
 
           <div className="login-helpers">
             <label className="remember-me">
-              <input type="checkbox" />
+              <input 
+                type="checkbox" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
               <span>Ghi nhớ đăng nhập</span>
             </label>
             <a href="#" className="forgot-password" onClick={(e) => e.preventDefault()}>
