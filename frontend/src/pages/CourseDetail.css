@@ -18,6 +18,7 @@
   cursor: pointer;
   padding: 0;
   width: fit-content;
+  white-space: nowrap;
   transition: color 0.2s ease;
 }
 
@@ -27,16 +28,15 @@
 
 /* Header Card */
 .course-detail-header-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 250, 252, 0.7) 100%);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(228, 228, 231, 0.8);
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid rgba(228, 228, 231, 0.6);
+  border-radius: 16px;
   padding: 24px 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  box-shadow: 0 4px 20px -6px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .course-detail-header-left {
@@ -47,11 +47,8 @@
 }
 
 .course-detail-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
-  background: rgba(79, 70, 229, 0.06);
-  border: 1px solid rgba(79, 70, 229, 0.12);
+  width: 48px;
+  height: 48px;
   color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -73,14 +70,14 @@
 
 .course-detail-code {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: 0.725rem;
   font-weight: 800;
-  padding: 3px 10px;
-  border-radius: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
   background: rgba(79, 70, 229, 0.06);
   color: var(--color-primary);
-  border: 1px solid rgba(79, 70, 229, 0.12);
-  letter-spacing: 0.05em;
+  border: 1px solid rgba(79, 70, 229, 0.1);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -203,7 +200,8 @@
   border: 1px solid #cbd5e1;
   color: #3f3f46;
   cursor: pointer;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .btn-action-edit:hover {
@@ -403,13 +401,11 @@
 }
 
 .panel-materials {
-  background: linear-gradient(to bottom right, #ffffff, rgba(14, 165, 233, 0.04));
-  border-color: rgba(14, 165, 233, 0.15);
+  background: #ffffff;
 }
 
 .panel-questions {
-  background: linear-gradient(to bottom right, #ffffff, rgba(79, 70, 229, 0.04));
-  border-color: rgba(79, 70, 229, 0.15);
+  background: #ffffff;
 }
 
 .section-card-header {
@@ -417,7 +413,7 @@
   align-items: center;
   gap: 14px;
   padding: 16px 20px;
-  border-bottom: 1px solid #f4f4f5;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .section-card-icon {
@@ -431,15 +427,11 @@
 }
 
 .materials-icon {
-  background: rgba(2, 132, 199, 0.07);
   color: #0284c7;
-  border: 1px solid rgba(2, 132, 199, 0.12);
 }
 
 .questions-icon {
-  background: rgba(79, 70, 229, 0.07);
   color: #4f46e5;
-  border: 1px solid rgba(79, 70, 229, 0.12);
 }
 
 .section-card-title {
@@ -552,7 +544,8 @@
   color: #ef4444;
   border: 1px solid #fca5a5;
   cursor: pointer;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .btn-danger-outline:hover {
@@ -563,18 +556,7 @@
 
 /* DELETE MODAL SPECIFICS */
 .delete-modal {
-  max-width: 500px !important;
-}
-
-.danger-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  background-color: #fee2e2;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  max-width: 480px !important;
 }
 
 .btn-danger {
@@ -589,7 +571,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -614,7 +597,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .btn-cancel:hover:not(:disabled) {

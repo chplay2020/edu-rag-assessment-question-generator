@@ -224,9 +224,6 @@ export const Courses: React.FC = () => {
       <motion.div className="courses-header" variants={itemVariants}>
         <div className="courses-title-wrapper">
           <h2 className="courses-title">
-            <span className="courses-title-icon">
-              <GraduationCap size={24} weight="duotone" />
-            </span>
             Môn học
           </h2>
           <p className="courses-subtitle">
@@ -251,7 +248,7 @@ export const Courses: React.FC = () => {
         <div className="search-wrapper">
           <input
             type="text"
-            placeholder="Tìm kiếm nhanh theo mã, tên hoặc mô tả môn học..."
+            placeholder="Tìm kiếm nhanh theo mã hoặc tên môn học..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -259,6 +256,15 @@ export const Courses: React.FC = () => {
           <span className="search-icon">
             <MagnifyingGlass size={20} />
           </span>
+          {searchQuery && (
+            <button
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              title="Xóa tìm kiếm"
+            >
+              <X size={14} weight="bold" />
+            </button>
+          )}
         </div>
 
         {/* Layout Toggle */}
@@ -575,9 +581,8 @@ export const Courses: React.FC = () => {
           <div className="modal-container delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-header-title-area">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#dc2626' }}>
-                  <WarningCircle size={24} weight="bold" />
-                  <h3 style={{ margin: 0, color: '#dc2626' }}>Xác nhận xóa môn học</h3>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.15rem', fontWeight: 700 }}>Xóa môn học</h3>
                 </div>
               </div>
               <button
@@ -589,12 +594,9 @@ export const Courses: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-form" style={{ padding: '24px 32px' }}>
-              <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
-                Bạn có chắc chắn muốn xóa môn học <strong>{courseToDelete?.code} - {courseToDelete?.title}</strong> không?
-              </p>
-              <p style={{ margin: '0 0 24px 0', fontSize: '0.95rem', color: '#dc2626', fontWeight: 500 }}>
-                Cảnh báo: Hành động này không thể hoàn tác! Toàn bộ dữ liệu liên quan sẽ bị mất.
+            <div className="modal-form" style={{ padding: '12px 32px 24px 32px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
+                Môn học <strong>{courseToDelete?.code} - {courseToDelete?.title}</strong> và toàn bộ tài liệu liên quan sẽ bị xóa khỏi hệ thống. Hành động này không thể phục hồi.
               </p>
               
               {deleteError && (
@@ -603,7 +605,7 @@ export const Courses: React.FC = () => {
                 </div>
               )}
 
-              <div className="modal-footer" style={{ padding: 0, borderTop: 'none', backgroundColor: 'transparent' }}>
+              <div className="modal-footer" style={{ display: 'flex', gap: '12px', padding: 0, borderTop: 'none', backgroundColor: 'transparent', justifyContent: 'flex-end' }}>
                 <button 
                   type="button" 
                   className="btn-secondary" 

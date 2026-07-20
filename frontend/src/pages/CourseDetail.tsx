@@ -332,11 +332,8 @@ export const CourseDetail: React.FC = () => {
           <div className="modal-container delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-header-title-area">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="danger-icon-wrapper">
-                    <WarningCircle size={24} weight="fill" color="#dc2626" />
-                  </div>
-                  <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 700 }}>Xóa môn học</h3>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.15rem', fontWeight: 700 }}>Xóa môn học</h3>
                 </div>
               </div>
               <button
@@ -348,8 +345,8 @@ export const CourseDetail: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-form" style={{ padding: '24px 32px' }}>
-              <p style={{ margin: '0 0 24px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
+            <div className="modal-form" style={{ padding: '12px 32px 24px 32px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
                 Môn học <strong>{course?.code} - {course?.title}</strong> và toàn bộ tài liệu, câu hỏi liên quan sẽ bị xóa khỏi hệ thống. Hành động này không thể phục hồi.
               </p>
 
@@ -359,7 +356,7 @@ export const CourseDetail: React.FC = () => {
                 </div>
               )}
 
-              <div className="modal-footer" style={{ padding: 0, borderTop: 'none', backgroundColor: 'transparent' }}>
+              <div className="modal-footer" style={{ display: 'flex', gap: '12px', padding: 0, borderTop: 'none', backgroundColor: 'transparent', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   className="btn-cancel"

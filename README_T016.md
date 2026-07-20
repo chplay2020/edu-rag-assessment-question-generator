@@ -1,74 +1,26 @@
 # Báo cáo thay đổi: Task T016 - Course Create/Edit Form
 
 ## Mức độ hoàn thành
+Đã hoàn thành giao diện tạo và chỉnh sửa môn học, tích hợp với Course API thật.
 
-Đã hoàn thành nối form tạo và sửa môn học với Course CRUD API thật (`POST /api/v1/courses` và `PUT /api/v1/courses/{id}`).
+## Chức năng đã thực hiện
+- Form tạo môn học gọi `POST /api/v1/courses`.
+- Form chỉnh sửa môn học gọi `PUT /api/v1/courses/{course_id}`.
+- Form chỉ gửi các trường backend hỗ trợ: `code`, `title`, `description`.
+- Không cho người dùng tự chọn giảng viên phụ trách; người tạo môn học được backend xác định từ JWT.
+- Kiểm tra bắt buộc cho mã môn học, tên môn học và mô tả.
+- Báo lỗi rõ khi mã môn học đã tồn tại.
+- Sau khi tạo hoặc sửa thành công, danh sách môn học được cập nhật ngay trên giao diện.
+- Hiển thị lỗi API khi tạo hoặc cập nhật thất bại.
 
-Đặc biệt, trường **"Học kỳ"** (`semester`) đã được **loại bỏ hoàn toàn** khỏi form tạo/sửa và trang chi tiết vì thông tin này không nằm trong Course schema/database schema của backend. 
+## Phụ thuộc
+- Course API: T014.
+- JWT và phân quyền: T010/T011.
+- Trang danh sách môn học: T015.
 
-Bên cạnh đó, để bảo toàn thông tin **Giảng viên** (`instructor`) (một trường UI-only khác), hệ thống đã tích hợp thêm cơ chế lưu trữ cục bộ song song cho trường này.
-
-## Thông tin task
-
-- Task ID: T016
-- Tên task: Course create/edit form
-- Stream: Frontend
-- Module: Course
-- Dependency: Course API (T014), Course list page (T015)
-
-## Thay đổi chính
-
-### 1. Cơ chế lưu trữ UI-only field `instructor`
-
-Do backend API hiện tại chỉ nhận `title`, `code`, `description`, trường `instructor` được quản lý như sau:
-- Khi submit thành công, bên cạnh việc gọi API, frontend gọi `saveLocalUiExtras(courseId, instructor)` để lưu vào `localStorage` dưới key `edu_course_ui_extras`.
-- Khi parse dữ liệu từ API (`mapApiCourse`), frontend tìm kiếm dữ liệu đã lưu cục bộ này để khôi phục lại giá trị giảng viên tương ứng.
-- Nhờ vậy, dữ liệu giảng viên đã sửa vẫn được bảo toàn sau khi tải lại trang hoặc đổi page mà không làm ảnh hưởng đến cấu trúc database của backend.
-
-### 2. `frontend/src/services/courseApi.ts`
-
-Thêm:
-- `createCourse(payload)` → `POST /api/v1/courses`
-- `updateCourse(id, payload)` → `PUT /api/v1/courses/{id}`
-- `saveLocalUiExtras(id, instructor)` & `getLocalUiExtras(id)` quản lý lưu cục bộ.
-- Xóa bỏ type `semester` và logic map `semester`.
-
-### 3. `frontend/src/components/courses/CourseFormModal.tsx`
-
-- Xóa bỏ state `semester`, ô nhập liệu "Học kỳ" và các tham số `semester` liên quan.
-- `onSubmit` đổi thành `async: (payload: CourseFormPayload) => Promise<void>`
-- Thêm prop `isSubmitting?: boolean` và `submitError?: string | null`
-- Khi `isSubmitting = true`:
-  - Disable tất cả inputs trong form.
-  - Disable nút close (X) và nút Hủy.
-  - Đổi chữ nút submit sang "Đang lưu...".
-- Nếu `submitError` có nội dung, hiển thị thông báo alert đỏ ở footer của modal.
-
-### 4. `frontend/src/pages/Courses.tsx` & `CourseDetail.tsx`
-
-- Cập nhật handler `handleFormSubmit` sang dạng `async`:
-  - Thực hiện gọi API cập nhật (`createCourse` / `updateCourse`).
-  - Ghi nhận `instructor` vào local storage qua `saveLocalUiExtras`.
-  - Cập nhật state local ngay lập tức mà không cần reload API.
-  - Nếu API trả lỗi: set state `submitError` để hiển thị lỗi, modal không đóng để người dùng chỉnh sửa tiếp.
-- `CourseDetail.tsx`: Xóa bỏ hiển thị dòng "Học kỳ" trong tab thông tin cơ bản.
-
----
-
-## Trạng thái các trường dữ liệu
-
-| Trường dữ liệu | Nơi lưu trữ | Ghi chú |
-|---|---|---|
-| `title` | PostgreSQL (API) | Đồng bộ thật |
-| `code` | PostgreSQL (API) | Đồng bộ thật |
-| `description` | PostgreSQL (API) | Đồng bộ thật |
-| `instructor` | `localStorage` (UI extras) | Tự động khôi phục khi parse API course |
-| `materialsCount` | UI Mock | Sẽ lấy từ Material API sau |
-| `questionsCount` | UI Mock | Sẽ lấy từ Question Bank API sau |
-
-## Kiểm tra đã chạy
-
-```bash
-npm.cmd run lint   # 0 warnings, 0 errors
-npm.cmd run build  # Build thành công
-```
+## Kiểm thử
+- Lecturer đăng nhập và tạo môn học thành công.
+- Tạo môn học trùng mã hiển thị thông báo lỗi.
+- Chỉnh sửa tên, mã hoặc mô tả môn học thành công.
+- Dữ liệu mới hiển thị lại trong danh sách và trang chi tiết.
+- Không có token hoặc token hết hạn sẽ quay về trang đăng nhập.
