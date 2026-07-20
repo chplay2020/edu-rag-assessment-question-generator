@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 28px;
-  padding: 12px 32px 32px 32px;
+  padding: 32px 32px 40px 32px;
 }
 
 /* Header Section */
@@ -947,8 +947,13 @@
     max-width: 100%;
   }
 
+  .controls-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
   .toggle-wrapper {
-    align-self: flex-end;
+    align-self: auto;
   }
 
   .courses-grid {

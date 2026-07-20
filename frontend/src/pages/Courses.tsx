@@ -230,16 +230,6 @@ export const Courses: React.FC = () => {
             Quản lý danh sách môn học và tài liệu học tập của bạn.
           </p>
         </div>
-
-        {/* Nút Thêm Môn Học */}
-        <button
-          onClick={handleOpenAddModal}
-          className="btn-add-course"
-          title="Thêm môn học mới"
-        >
-          <Plus size={16} weight="bold" />
-          <span>Thêm môn học</span>
-        </button>
       </motion.div>
 
       {/* Search & Tool Bar */}
@@ -267,21 +257,34 @@ export const Courses: React.FC = () => {
           )}
         </div>
 
-        {/* Layout Toggle */}
-        <div className="toggle-wrapper">
+        {/* Actions (Toggle + Add Button) */}
+        <div className="controls-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Layout Toggle */}
+          <div className="toggle-wrapper">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`btn-toggle ${viewMode === 'grid' ? 'active' : ''}`}
+              title="Dạng lưới"
+            >
+              <SquaresFour size={18} weight={viewMode === 'grid' ? 'fill' : 'regular'} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`btn-toggle ${viewMode === 'list' ? 'active' : ''}`}
+              title="Dạng danh sách"
+            >
+              <Rows size={18} weight={viewMode === 'list' ? 'fill' : 'regular'} />
+            </button>
+          </div>
+
+          {/* Nút Thêm Môn Học */}
           <button
-            onClick={() => setViewMode('grid')}
-            className={`btn-toggle ${viewMode === 'grid' ? 'active' : ''}`}
-            title="Dạng lưới"
+            onClick={handleOpenAddModal}
+            className="btn-add-course"
+            title="Thêm môn học mới"
           >
-            <SquaresFour size={18} weight={viewMode === 'grid' ? 'fill' : 'regular'} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`btn-toggle ${viewMode === 'list' ? 'active' : ''}`}
-            title="Dạng danh sách"
-          >
-            <Rows size={18} weight={viewMode === 'list' ? 'fill' : 'regular'} />
+            <Plus size={16} weight="bold" />
+            <span>Thêm môn học</span>
           </button>
         </div>
       </motion.div>
