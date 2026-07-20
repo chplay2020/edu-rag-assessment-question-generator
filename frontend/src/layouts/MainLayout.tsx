@@ -68,7 +68,7 @@ export const MainLayout: React.FC = () => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <img src={logo} className="sidebar-logo" alt="Logo Edu RAG" />
-          <h2>Edu RAG</h2>
+          <h2>Edu<span className="brand-accent">RAG</span></h2>
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item) => {
@@ -151,7 +151,7 @@ export const MainLayout: React.FC = () => {
             >
               <div className="logout-modal-header">
                 <h3 id="logout-modal-title" className="logout-modal-title">
-                  Đăng xuất
+                  Đăng xuất khỏi hệ thống?
                 </h3>
                 <button
                   className="logout-modal-close"
@@ -159,7 +159,7 @@ export const MainLayout: React.FC = () => {
                   disabled={isLoggingOut}
                   aria-label="Đóng"
                 >
-                  <X size={20} />
+                  <X size={20} weight="regular" />
                 </button>
               </div>
 
@@ -175,7 +175,7 @@ export const MainLayout: React.FC = () => {
                     onClick={() => setShowLogoutModal(false)}
                     disabled={isLoggingOut}
                   >
-                    Huỷ
+                    Trở lại
                   </button>
                   <button
                     className={`logout-modal-btn-confirm ${isLoggingOut ? 'loading' : ''}`}
@@ -184,10 +184,8 @@ export const MainLayout: React.FC = () => {
                   >
                     {isLoggingOut ? (
                       <span className="logout-spinner" />
-                    ) : (
-                      <SignOut size={16} weight="bold" />
-                    )}
-                    <span>{isLoggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</span>
+                    ) : null}
+                    <span>{isLoggingOut ? 'Đang xử lý…' : 'Đăng xuất'}</span>
                   </button>
                 </div>
               </div>
