@@ -4,8 +4,6 @@ from datetime import datetime
 
 class MaterialBase(BaseModel):
     title: str
-    description: Optional[str] = None
-    file_type: str
     course_id: int
 
 class MaterialCreate(MaterialBase):
@@ -13,10 +11,10 @@ class MaterialCreate(MaterialBase):
 
 class MaterialResponse(MaterialBase):
     id: int
+    uploaded_by: int
     file_url: Optional[str] = None
     status: str
     created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
