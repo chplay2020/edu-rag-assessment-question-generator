@@ -34,10 +34,10 @@ export const authService = {
   },
   
   logout: () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
   },
   
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!localStorage.getItem('access_token');
   }
 };
