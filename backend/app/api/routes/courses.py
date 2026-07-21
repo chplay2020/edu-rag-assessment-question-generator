@@ -5,7 +5,7 @@ from app.api.deps import (
     get_current_user_id,
     get_current_user_role,
     get_db,
-    get_current_active_admin,
+    get_current_active_lecturer,
 )
 from app.schemas.course_schema import (
     CourseCreate,
@@ -22,7 +22,19 @@ not_found_response = {
     "content": {
         "application/json": {
             "example": {
-                "detail": "Course not found",
+                "message": "Course not found",
+            },
+        },
+    },
+}
+
+# Mô tả phản hồi lỗi 403 trong tài liệu OpenAPI/Swagger.
+forbidden_response = {
+    "description": "Forbidden",
+    "content": {
+        "application/json": {
+            "example": {
+                "message": "Forbidden",
             },
         },
     },
@@ -33,7 +45,10 @@ not_found_response = {
     "",
     response_model=CourseResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(get_current_active_admin)]
+    responses={
+        status.HTTP_403_FORBIDDEN: forbidden_response,
+    },
+    dependencies=[Depends(get_current_active_lecturer)],
 )
 def create_course(
     course_in: CourseCreate,
@@ -54,6 +69,9 @@ def create_course(
 @router.get(
     "",
     response_model=list[CourseResponse],
+    responses={
+        status.HTTP_403_FORBIDDEN: forbidden_response,
+    },
 )
 def list_courses(
     db: Session = Depends(get_db),
@@ -79,6 +97,7 @@ def list_courses(
     "/{course_id}",
     response_model=CourseResponse,
     responses={
+        status.HTTP_403_FORBIDDEN: forbidden_response,
         status.HTTP_404_NOT_FOUND: not_found_response,
     },
 )
@@ -110,6 +129,7 @@ def get_course(
     "/{course_id}",
     response_model=CourseResponse,
     responses={
+        status.HTTP_403_FORBIDDEN: forbidden_response,
         status.HTTP_404_NOT_FOUND: not_found_response,
     },
 )
@@ -147,6 +167,7 @@ def update_course(
     "/{course_id}",
     response_model=CourseResponse,
     responses={
+        status.HTTP_403_FORBIDDEN: forbidden_response,
         status.HTTP_404_NOT_FOUND: not_found_response,
     },
 )
