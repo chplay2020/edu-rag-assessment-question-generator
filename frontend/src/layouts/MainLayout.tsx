@@ -1,9 +1,8 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
-import { Button } from '../components/common/Button';
 import logo from '../assets/Logo.png';
-import { House, BookBookmark, GraduationCap, SignOut, Warning, X } from '@phosphor-icons/react';
+import { House, BookBookmark, GraduationCap, SignOut, X } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const MainLayout: React.FC = () => {

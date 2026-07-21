@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  GraduationCap,
   MagnifyingGlass,
   Plus,
   SquaresFour,
@@ -14,8 +13,7 @@ import {
   PencilSimple,
   X,
   DotsThreeVertical,
-  Trash,
-  WarningCircle
+  Trash
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
 import { fetchCourses, createCourse, updateCourse, deleteCourse, type Course } from '../services/courseApi';
