@@ -13,7 +13,7 @@ export const authService = {
       params.append('username', email); // backend expects 'username' for OAuth2
       params.append('password', password);
       
-      const response = await api.post<LoginResponse>('/auth/login', params, {
+      const response = await api.post<LoginResponse>('/api/v1/auth/login', params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -34,10 +34,10 @@ export const authService = {
   },
   
   logout: () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
   },
   
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!localStorage.getItem('access_token');
   }
 };
