@@ -111,7 +111,7 @@ export const Login: React.FC = () => {
               className="login-logo"
               alt="Logo Edu RAG"
             />
-            <h2>Edu RAG</h2>
+            <h2>Edu<span className="brand-accent">RAG</span></h2>
           </div>
 
           <p>Hệ thống tạo câu hỏi từ tài liệu học phần</p>
