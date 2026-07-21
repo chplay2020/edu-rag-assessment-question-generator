@@ -7,7 +7,7 @@
   background-color: var(--color-bg-main);
 }
 
-.login-card {
+.login-container .login-card {
   width: 100%;
   max-width: 440px;
   padding: 48px 40px;
@@ -19,12 +19,12 @@
   flex-direction: column;
 }
 
-.login-header {
+.login-container .login-header {
   text-align: center;
   margin-bottom: 36px;
 }
 
-.login-logo-container {
+.login-container .login-logo-container {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,14 +32,14 @@
   margin-bottom: 12px;
 }
 
-.login-logo {
+.login-container .login-logo {
   width: 90px;
   height: 90px;
   margin: -25px -28px -25px -25px;
   object-fit: contain;
 }
 
-.login-header h2 {
+.login-container .login-header h2 {
   color: var(--color-text-main);
   font-size: 1.85rem;
   font-weight: 800;
@@ -47,39 +47,39 @@
   margin: 0;
 }
 
-.login-header p {
+.login-container .login-header p {
   color: var(--color-text-muted);
   font-size: 0.95rem;
   font-weight: 500;
   margin-top: 6px;
 }
 
-.login-form {
+.login-container .login-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.form-group {
+.login-container .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
   position: relative;
 }
 
-.form-group label {
+.login-container .form-group label {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text-main);
   padding-left: 2px;
 }
 
-.input-wrapper {
+.login-container .input-wrapper {
   position: relative;
   width: 100%;
 }
 
-.input-wrapper>svg {
+.login-container .input-wrapper>svg {
   position: absolute;
   left: 14px;
   top: 50%;
@@ -89,7 +89,7 @@
   transition: color var(--transition-fast);
 }
 
-.form-group input {
+.login-container .form-group input {
   width: 100%;
   padding: 12px 16px 12px 42px;
   border-radius: 10px;
@@ -101,22 +101,22 @@
   transition: all var(--transition-fast);
 }
 
-.form-group input::placeholder {
+.login-container .form-group input::placeholder {
   color: #cbd5e1;
 }
 
-.form-group input:focus {
+.login-container .form-group input:focus {
   outline: none;
   border-color: var(--color-primary);
   background: white;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
 }
 
-.form-group input:focus+svg {
+.login-container .form-group input:focus+svg {
   color: var(--color-primary);
 }
 
-.login-helpers {
+.login-container .login-helpers {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -125,7 +125,7 @@
   font-size: 0.85rem;
 }
 
-.remember-me {
+.login-container .remember-me {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -135,11 +135,11 @@
   transition: color var(--transition-fast);
 }
 
-.remember-me:hover {
+.login-container .remember-me:hover {
   color: var(--color-text-main);
 }
 
-.remember-me input[type="checkbox"] {
+.login-container .remember-me input[type="checkbox"] {
   cursor: pointer;
   accent-color: var(--color-primary);
   width: 15px;
@@ -148,23 +148,23 @@
   border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.forgot-password {
+.login-container .forgot-password {
   color: var(--color-primary);
   font-weight: 500;
   text-decoration: none;
   transition: opacity var(--transition-fast);
 }
 
-.forgot-password:hover {
+.login-container .forgot-password:hover {
   opacity: 0.85;
   text-decoration: underline;
 }
 
-.login-actions {
+.login-container .login-actions {
   margin-top: 8px;
 }
 
-.btn-primary {
+.login-container .btn-primary {
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.18);
   border-radius: 10px;
   font-weight: 600;

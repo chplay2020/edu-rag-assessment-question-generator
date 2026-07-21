@@ -9,3 +9,4 @@ __pycache__/
 *.py[cod]
 
 .agents/RULES.md
+.agents/skills/hallmark/
