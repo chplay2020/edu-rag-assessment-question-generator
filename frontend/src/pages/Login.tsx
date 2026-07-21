@@ -1,67 +1,95 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Button } from '../components/common/Button';
+import { authService } from '../services/auth';
 import logo from '../assets/Logo.png';
 import { Envelope, Lock, Eye, EyeSlash } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import './Login.css';
 
-const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000';
-
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState(localStorage.getItem('remembered_email') || '');
+
+  const [email, setEmail] = useState(
+    localStorage.getItem('remembered_email') || ''
+  );
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('remembered_email'));
+  const [rememberMe, setRememberMe] = useState(
+    Boolean(localStorage.getItem('remembered_email'))
+  );
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     setError(null);
     setIsLoading(true);
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', email); // OAuth2 expects 'username'
-      formData.append('password', password);
+      const data = await authService.login(email.trim(), password);
 
-      const response = await axios.post(`${BASE_URL}/api/v1/auth/login`, formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
-
-      const data = response.data;
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
-        if (rememberMe) {
-          localStorage.setItem('remembered_email', email);
-        } else {
-          localStorage.removeItem('remembered_email');
-        }
-        navigate('/');
-      } else {
-        setError('Đăng nhập thất bại: Không nhận được token');
+      if (!data?.access_token) {
+        setError('Đăng nhập thất bại: Không nhận được token.');
+        return;
       }
-    } catch (err: any) {
+
+      // Thống nhất toàn bộ ứng dụng sử dụng key access_token
+      localStorage.setItem('access_token', data.access_token);
+
+      // Xóa key cũ để tránh xung đột với phiên bản trước
+      localStorage.removeItem('token');
+      localStorage.removeItem('isAuthenticated');
+
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email.trim());
+      } else {
+        localStorage.removeItem('remembered_email');
+      }
+
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      const msg = err.response?.data?.detail || err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
-      setError(msg);
+
+      let message = 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err
+      ) {
+        const axiosError = err as {
+          response?: {
+            data?: {
+              detail?: string;
+              message?: string;
+            };
+          };
+        };
+
+        message =
+          axiosError.response?.data?.detail ||
+          axiosError.response?.data?.message ||
+          message;
+      }
+
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const containerVariants = {
-    hidden: { opacity: 0, scale: 0.96 },
+    hidden: {
+      opacity: 0,
+      scale: 0.96
+    },
     show: {
       opacity: 1,
       scale: 1,
       transition: {
-        type: "spring" as const,
+        type: 'spring' as const,
         stiffness: 260,
         damping: 24
       }
@@ -78,46 +106,68 @@ export const Login: React.FC = () => {
       >
         <div className="login-header">
           <div className="login-logo-container">
-            <img src={logo} className="login-logo" alt="Logo Edu RAG" />
+            <img
+              src={logo}
+              className="login-logo"
+              alt="Logo Edu RAG"
+            />
             <h2>Edu RAG</h2>
           </div>
+
           <p>Hệ thống tạo câu hỏi từ tài liệu học phần</p>
         </div>
 
         <form onSubmit={handleLogin} className="login-form">
           {error && (
-            <div style={{ color: '#dc2626', backgroundColor: '#fef2f2', padding: '10px 14px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+            <div
+              className="login-error"
+              role="alert"
+              style={{
+                color: '#dc2626',
+                backgroundColor: '#fef2f2',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                marginBottom: '16px',
+                textAlign: 'center'
+              }}
+            >
               {error}
             </div>
           )}
 
           <div className="form-group">
-            <label>Email / Tên đăng nhập</label>
+            <label htmlFor="email">Email / Tên đăng nhập</label>
+
             <div className="input-wrapper">
-              <input 
+              <input
                 id="email"
                 name="email"
-                type="text" 
-                placeholder="Nhập email của bạn" 
+                type="text"
+                placeholder="Nhập email của bạn"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
+                required
               />
+
               <Envelope size={18} />
             </div>
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu</label>
+            <label htmlFor="password">Mật khẩu</label>
+
             <div className="input-wrapper">
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Nhập mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                required
                 style={{
                   width: '100%',
                   display: 'block',
@@ -125,10 +175,15 @@ export const Login: React.FC = () => {
                   paddingRight: '44px'
                 }}
               />
+
               <Lock size={18} />
+
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                aria-label={
+                  showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'
+                }
+                onClick={() => setShowPassword((current) => !current)}
                 style={{
                   position: 'absolute',
                   right: '16px',
@@ -144,27 +199,41 @@ export const Login: React.FC = () => {
                   zIndex: 10
                 }}
               >
-                {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                {showPassword ? (
+                  <EyeSlash size={18} />
+                ) : (
+                  <Eye size={18} />
+                )}
               </button>
             </div>
           </div>
 
           <div className="login-helpers">
             <label className="remember-me">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <span>Ghi nhớ đăng nhập</span>
             </label>
-            <a href="#" className="forgot-password" onClick={(e) => e.preventDefault()}>
+
+            <a
+              href="/forgot-password"
+              className="forgot-password"
+              onClick={(e) => e.preventDefault()}
+            >
               Quên mật khẩu?
             </a>
           </div>
 
           <div className="login-actions">
-            <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              disabled={isLoading}
+            >
               {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </div>
