@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.models.course import Course
 from app.schemas.course_schema import CourseCreate, CourseUpdate
 
@@ -23,8 +24,15 @@ def create_course(db: Session, course_in: CourseCreate, created_by: int, current
         created_by=created_by
     )
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    try:
+        db.commit()
+        db.refresh(db_obj)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Mã môn học đã tồn tại. Vui lòng chọn mã khác."
+        )
     return db_obj
 
 def list_courses(
@@ -92,9 +100,6 @@ def update_course(
 ) -> Course:
 
     # Cập nhật thông tin của khóa học.
-    # Chỉ cho phép 'admin' hoặc 'lecturer' (quyền sở hữu đã được kiểm tra trước đó khi gọi get_course).
-    # Cập nhật thời gian sửa đổi (updated_at) bằng thời gian UTC hiện tại.
-    
     # Kiểm tra phân quyền vai trò người dùng
     if current_user_role not in ["admin", "lecturer"]:
         raise HTTPException(
@@ -111,8 +116,15 @@ def update_course(
     db_obj.updated_at = datetime.now(timezone.utc)
     
     db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
+    try:
+        db.commit()
+        db.refresh(db_obj)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Mã môn học đã tồn tại. Vui lòng chọn mã khác."
+        )
     return db_obj
 
 def soft_delete_course(
@@ -122,9 +134,6 @@ def soft_delete_course(
 ) -> Course:
 
     # Xóa mềm một khóa học (chuyển trạng thái is_deleted sang True).
-    # Chỉ cho phép 'admin' hoặc 'lecturer' (quyền sở hữu đã được kiểm tra trước đó khi gọi get_course).
-    # Cập nhật thời gian sửa đổi (updated_at) bằng thời gian UTC hiện tại.
-
     # Kiểm tra phân quyền vai trò người dùng
     if current_user_role not in ["admin", "lecturer"]:
         raise HTTPException(

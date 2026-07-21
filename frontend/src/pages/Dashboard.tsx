@@ -55,7 +55,7 @@ export const Dashboard: React.FC = () => {
   return (
     <motion.div
       className="dashboard-container"
-      style={{ padding: '12px 28px 28px 28px', display: 'flex', flexDirection: 'column', gap: '24px' }}
+      style={{ padding: '32px 32px 40px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}
       variants={containerVariants}
       initial="hidden"
       animate="show"

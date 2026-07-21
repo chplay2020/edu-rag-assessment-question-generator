@@ -1,27 +1,25 @@
 from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
 
 class CourseBase(BaseModel):
-    code: str
-    name: str
-    description: Optional[str] = None
-    is_active: bool = True
+    title: str
+    description: str | None = None
+    code: str | None = None
 
 class CourseCreate(CourseBase):
     pass
 
 class CourseUpdate(BaseModel):
-    code: Optional[str] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
+    title: str | None = None
+    description: str | None = None
+    code: str | None = None
 
 class CourseResponse(CourseBase):
     id: int
     created_by: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None = None
+    is_deleted: bool
 
     class Config:
         from_attributes = True
