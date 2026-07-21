@@ -61,10 +61,10 @@ export function mapApiCourse(raw: CourseApiResponse): Course {
 // Trả về mảng Course hoặc ném lỗi (caller tự xử lý fallback).
 
 export async function fetchCourses(): Promise<Course[]> {
-  const res = await apiClient.get<CourseApiResponse[]>(`/api/v1/courses`);
+  const res = await apiClient.get<CourseApiResponse[]>(`/courses`);
 
   if (!Array.isArray(res.data)) {
-    throw new Error('Invalid response format from GET /api/v1/courses');
+    throw new Error('Invalid response format from GET /courses');
   }
 
   return res.data.map(mapApiCourse);
@@ -75,7 +75,7 @@ export async function fetchCourses(): Promise<Course[]> {
 
 export async function fetchCourseById(id: number): Promise<Course | null> {
   try {
-    const res = await apiClient.get<CourseApiResponse>(`/api/v1/courses/${id}`);
+    const res = await apiClient.get<CourseApiResponse>(`/courses/${id}`);
     return mapApiCourse(res.data);
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 404) {
@@ -101,17 +101,17 @@ export interface CourseUpdatePayload {
 
 // Tạo môn học mới
 export async function createCourse(payload: CourseCreatePayload): Promise<Course> {
-  const res = await apiClient.post<CourseApiResponse>(`/api/v1/courses`, payload);
+  const res = await apiClient.post<CourseApiResponse>(`/courses`, payload);
   return mapApiCourse(res.data);
 }
 
 // Cập nhật môn học
 export async function updateCourse(id: number, payload: CourseUpdatePayload): Promise<Course> {
-  const res = await apiClient.put<CourseApiResponse>(`/api/v1/courses/${id}`, payload);
+  const res = await apiClient.put<CourseApiResponse>(`/courses/${id}`, payload);
   return mapApiCourse(res.data);
 }
 
 // Xóa môn học (soft delete)
 export async function deleteCourse(id: number): Promise<void> {
-  await apiClient.delete(`/api/v1/courses/${id}`);
+  await apiClient.delete(`/courses/${id}`);
 }

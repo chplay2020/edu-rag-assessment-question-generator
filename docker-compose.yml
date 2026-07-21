@@ -48,7 +48,7 @@ services:
       - "5173:5173"
     environment:
       # Báo cho frontend biết API đang chạy ở đâu
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8000/api/v1
     volumes:
       # Mount source code frontend vào container, bỏ qua thư mục node_modules
       - ./frontend:/app
