@@ -12,9 +12,10 @@ import {
   Gear,
   CaretRight
 } from '@phosphor-icons/react';
-import { fetchCourseById, type Course } from '../services/courseApi';
+import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
   getMaterialById,
+  getCachedMaterialById,
   downloadMaterialFile,
   extractApiError,
   formatViDate,
@@ -55,16 +56,18 @@ export const MaterialDetail: React.FC = () => {
 
   const cId = Number(courseId);
   const mId = Number(materialId);
+  const isValidCourseId = Number.isInteger(cId) && cId > 0;
+  const isValidMaterialId = Number.isInteger(mId) && mId > 0;
+  const initialCourse = isValidCourseId ? getCachedCourseById(cId) : null;
+  const cachedMaterial = isValidMaterialId ? getCachedMaterialById(mId) : null;
+  const initialMaterial = cachedMaterial?.course_id === cId ? cachedMaterial : null;
 
-  const [course, setCourse] = useState<Course | null>(null);
-  const [material, setMaterial] = useState<MaterialDetailType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [course, setCourse] = useState<Course | null>(initialCourse);
+  const [material, setMaterial] = useState<MaterialDetailType | null>(initialMaterial);
+  const [loading, setLoading] = useState(!(initialCourse && initialMaterial));
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-
-  const isValidCourseId = Number.isInteger(cId) && cId > 0;
-  const isValidMaterialId = Number.isInteger(mId) && mId > 0;
 
   const loadData = useCallback(async () => {
     if (!isValidCourseId || !isValidMaterialId) {
@@ -73,7 +76,12 @@ export const MaterialDetail: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    const cachedCourse = getCachedCourseById(cId);
+    const currentMaterial = getCachedMaterialById(mId);
+    const cachedMaterialForCourse = currentMaterial?.course_id === cId ? currentMaterial : null;
+    if (cachedCourse) setCourse(cachedCourse);
+    if (cachedMaterialForCourse) setMaterial(cachedMaterialForCourse);
+    setLoading(!(cachedCourse && cachedMaterialForCourse));
     setError(null);
     try {
       const [courseData, materialData] = await Promise.all([

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,14 +13,24 @@ import {
   CaretRight
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
-import { fetchCourseById, updateCourse, deleteCourse, type Course } from '../services/courseApi';
+import {
+  fetchCourseById,
+  getCachedCourseById,
+  updateCourse,
+  deleteCourse,
+  type Course,
+} from '../services/courseApi';
 import { getMaterialsByCourse } from '../services/materialApi';
 import './CourseDetail.css';
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const courseId = Number(id);
+  const initialCourse = Number.isInteger(courseId) && courseId > 0
+    ? getCachedCourseById(courseId)
+    : null;
+  const [course, setCourse] = useState<Course | null>(initialCourse);
+  const [isLoading, setIsLoading] = useState(!initialCourse);
   const [notFound, setNotFound] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -45,19 +55,21 @@ export const CourseDetail: React.FC = () => {
     });
   };
 
-  const fetchData = async () => {
-    if (!id) {
+  const fetchData = useCallback(async () => {
+    if (!id || !Number.isInteger(courseId) || courseId <= 0) {
       setNotFound(true);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    const cachedCourse = getCachedCourseById(courseId);
+    if (cachedCourse) setCourse(cachedCourse);
+    setIsLoading(!cachedCourse);
     setNotFound(false);
     setPageError(null);
 
     try {
-      const apiCourse = await fetchCourseById(Number(id));
+      const apiCourse = await fetchCourseById(courseId);
       if (apiCourse === null) {
         setNotFound(true);
       } else {
@@ -70,17 +82,17 @@ export const CourseDetail: React.FC = () => {
         navigate('/login');
       } else if (err.response?.status === 404) {
         setNotFound(true);
-      } else {
+      } else if (!cachedCourse) {
         setPageError('Đã xảy ra lỗi khi tải thông tin môn học.');
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [courseId, id, navigate]);
 
   useEffect(() => {
     fetchData();
-  }, [id, navigate]);
+  }, [fetchData]);
 
   // fetch real materials count when course id changes
   useEffect(() => {

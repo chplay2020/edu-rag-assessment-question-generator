@@ -16,12 +16,13 @@ import {
   ArrowLeft,
   CaretRight,
 } from '@phosphor-icons/react';
-import { fetchCourseById, type Course } from '../services/courseApi';
+import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
   uploadMaterial,
   getMaterialsByCourse,
+  getCachedMaterialsByCourse,
   validateFile,
-  getMaterialDownloadUrl,
+  downloadMaterialFile,
   extractApiError,
   formatViDate,
   formatFileSize,
@@ -67,14 +68,17 @@ export const CourseMaterials: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
   const courseId = Number(id);
+  const isValidCourseId = Number.isInteger(courseId) && courseId > 0;
+  const initialCourse = isValidCourseId ? getCachedCourseById(courseId) : null;
+  const initialMaterials = isValidCourseId ? getCachedMaterialsByCourse(courseId) : null;
 
   // Course info
-  const [course, setCourse] = useState<Course | null>(null);
-  const [courseLoading, setCourseLoading] = useState(true);
+  const [course, setCourse] = useState<Course | null>(initialCourse);
+  const [courseLoading, setCourseLoading] = useState(!initialCourse);
 
   // Materials list
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [listLoading, setListLoading] = useState(true);
+  const [materials, setMaterials] = useState<Material[]>(initialMaterials ?? []);
+  const [listLoading, setListLoading] = useState(!initialMaterials);
   const [listError, setListError] = useState<string | null>(null);
 
   // Upload state
@@ -94,7 +98,9 @@ export const CourseMaterials: React.FC = () => {
 
   const fetchCourse = useCallback(async () => {
     if (!id) return;
-    setCourseLoading(true);
+    const cachedCourse = getCachedCourseById(courseId);
+    if (cachedCourse) setCourse(cachedCourse);
+    setCourseLoading(!cachedCourse);
     try {
       const data = await fetchCourseById(courseId);
       setCourse(data);
@@ -107,8 +113,10 @@ export const CourseMaterials: React.FC = () => {
 
   const fetchMaterials = useCallback(async (silent = false) => {
     if (!id) return;
+    const cachedMaterials = getCachedMaterialsByCourse(courseId);
+    if (cachedMaterials) setMaterials(cachedMaterials);
     if (!silent) {
-      setListLoading(true);
+      setListLoading(!cachedMaterials);
       setListError(null);
     }
     try {
@@ -175,23 +183,7 @@ export const CourseMaterials: React.FC = () => {
 
   const handleDownload = async (fileUrl: string, filename: string) => {
     try {
-      const fullUrl = getMaterialDownloadUrl(fileUrl);
-      const response = await fetch(fullUrl);
-      if (!response.ok) throw new Error('Không thể tải file');
-
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-
-      // Cleanup
-      window.URL.revokeObjectURL(blobUrl);
-      document.body.removeChild(a);
+      await downloadMaterialFile(fileUrl, filename);
     } catch (error) {
       console.error('Download error:', error);
       showToast('error', 'Lỗi khi tải file. Vui lòng thử lại sau.');

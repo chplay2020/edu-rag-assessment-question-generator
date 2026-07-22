@@ -11,6 +11,43 @@ export interface Material {
   created_at: string;
 }
 
+const materialsByCourseCache = new Map<string, Material[]>();
+const materialDetailCache = new Map<string, MaterialDetail>();
+
+function getMaterialCacheKey(id: number): string {
+  const session = localStorage.getItem('access_token') ?? 'anonymous';
+  return `${session}:${id}`;
+}
+
+function getMaterialSessionPrefix(): string {
+  const session = localStorage.getItem('access_token') ?? 'anonymous';
+  return `${session}:`;
+}
+
+export function getCachedMaterialsByCourse(courseId: number): Material[] | null {
+  return materialsByCourseCache.get(getMaterialCacheKey(courseId)) ?? null;
+}
+
+export function getCachedMaterialById(materialId: number): MaterialDetail | null {
+  const detail = materialDetailCache.get(getMaterialCacheKey(materialId));
+  if (detail) return detail;
+
+  const sessionPrefix = getMaterialSessionPrefix();
+  for (const [key, materials] of materialsByCourseCache.entries()) {
+    if (!key.startsWith(sessionPrefix)) continue;
+    const material = materials.find((item) => item.id === materialId);
+    if (material) {
+      return {
+        ...material,
+        chunk_count: 0,
+        extracted_text_preview: null,
+      };
+    }
+  }
+
+  return null;
+}
+
 // định dạng file cho phép
 export const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt'];
 export const ALLOWED_MIME_TYPES = [
@@ -44,14 +81,21 @@ export async function uploadMaterial(courseId: number, file: File): Promise<Mate
   formData.append('file', file);
 
   const res = await apiClient.post<Material>('/materials/upload', formData);
-  return res.data;
+  const material = res.data;
+  const key = getMaterialCacheKey(courseId);
+  const cached = materialsByCourseCache.get(key);
+  if (cached) {
+    materialsByCourseCache.set(key, [material, ...cached.filter((item) => item.id !== material.id)]);
+  }
+  return material;
 }
 
 // lấy danh sách tài liệu theo ID khóa học
 export async function getMaterialsByCourse(courseId: number): Promise<Material[]> {
   const res = await apiClient.get<Material[]>(`/materials/course/${courseId}`);
-  if (!Array.isArray(res.data)) return [];
-  return res.data;
+  const materials = Array.isArray(res.data) ? res.data : [];
+  materialsByCourseCache.set(getMaterialCacheKey(courseId), materials);
+  return materials;
 }
 
 // cảnh báo lỗi API
@@ -135,18 +179,30 @@ export interface MaterialDetail extends Material {
 // lấy thông tin chi tiết tài liệu
 export async function getMaterialById(materialId: number): Promise<MaterialDetail> {
   const res = await apiClient.get<MaterialDetail>(`/materials/${materialId}`);
+  materialDetailCache.set(getMaterialCacheKey(materialId), res.data);
   return res.data;
 }
 
-// helper để tải xuống
-export function downloadMaterialFile(fileUrl: string, filename: string): void {
+// Tải qua blob để thuộc tính download vẫn hoạt động khi file nằm ở backend khác origin.
+export async function downloadMaterialFile(fileUrl: string, filename: string): Promise<void> {
   const url = getMaterialDownloadUrl(fileUrl);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = url;
+  link.style.display = 'none';
+  link.href = blobUrl;
   link.download = filename || 'download';
-  // target blank for cross-origin downloads
-  link.target = '_blank';
   document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+
+  try {
+    link.click();
+  } finally {
+    document.body.removeChild(link);
+    window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 0);
+  }
 }

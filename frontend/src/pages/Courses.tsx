@@ -241,7 +241,7 @@ export const Courses: React.FC = () => {
     <motion.div
       className="courses-container"
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="show"
     >
       {/* Title Header */}

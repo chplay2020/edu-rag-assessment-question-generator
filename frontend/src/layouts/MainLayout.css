@@ -137,6 +137,12 @@
   flex: 1;
   overflow-y: auto;
   border-radius: 16px;
+  background-color: var(--color-bg-main);
+  scrollbar-gutter: stable;
+}
+
+.page-transition {
+  min-height: 100%;
 }
 
 /* User Block (Sidebar Footer) */
