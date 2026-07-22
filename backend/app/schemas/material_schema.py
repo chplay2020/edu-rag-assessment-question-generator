@@ -19,6 +19,10 @@ class MaterialResponse(MaterialBase):
     class Config:
         from_attributes = True
 
+class MaterialDetailResponse(MaterialResponse):
+    chunk_count: int
+    extracted_text_preview: Optional[str] = None
+
 class JobResponse(BaseModel):
     id: int
     material_id: int

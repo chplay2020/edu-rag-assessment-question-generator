@@ -3,15 +3,17 @@ import uuid
 import shutil
 from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.orm import Session
-from app.models.material import Material
+from sqlalchemy import func
+from app.models.material import Material, Chunk
+from app.schemas.material_schema import MaterialResponse
 from app.services import course_service
 
 # Cấu hình lưu trữ
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "storage/uploads")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_MIME_TYPES = [
-    "application/pdf", 
-    "text/plain", 
+    "application/pdf",
+    "text/plain",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]
 ALLOWED_EXTENSIONS = ["pdf", "txt", "docx"]
@@ -21,18 +23,18 @@ def ensure_upload_dir_exists():
         os.makedirs(UPLOAD_DIR)
 
 def upload_material(
-    db: Session, 
-    course_id: int, 
-    file: UploadFile, 
-    current_user_id: int, 
+    db: Session,
+    course_id: int,
+    file: UploadFile,
+    current_user_id: int,
     current_user_role: str
 ) -> Material:
-    
+
     # 1. Kiểm tra course tồn tại và quyền (lecturer chỉ được sửa khóa mình tạo)
     course = course_service.get_course(
-        db=db, 
-        course_id=course_id, 
-        current_user_id=current_user_id, 
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
         current_user_role=current_user_role
     )
     if not course:
@@ -48,12 +50,12 @@ def upload_material(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Chỉ hỗ trợ upload định dạng PDF, TXT hoặc DOCX."
         )
-            
+
     # Lấy kích thước file thực tế bằng cách di chuyển con trỏ đọc
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
     file.file.seek(0) # Trả con trỏ về đầu để lưu
-    
+
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -64,8 +66,8 @@ def upload_material(
     ensure_upload_dir_exists()
     safe_filename = f"{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
-    
-    # Đảm bảo đường dẫn file dùng / 
+
+    # Đảm bảo đường dẫn file dùng /
     file_path = file_path.replace("\\", "/")
 
     try:
@@ -86,7 +88,7 @@ def upload_material(
         status="processing"
     )
     db.add(db_obj)
-    
+
     try:
         db.commit()
         db.refresh(db_obj)
@@ -99,21 +101,21 @@ def upload_material(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Lỗi khi lưu thông tin vào cơ sở dữ liệu."
         )
-        
+
     return db_obj
 
 
 def get_materials_by_course(
-    db: Session, 
-    course_id: int, 
-    current_user_id: int, 
+    db: Session,
+    course_id: int,
+    current_user_id: int,
     current_user_role: str
 ) -> list[Material]:
-    
+
     course = course_service.get_course(
-        db=db, 
-        course_id=course_id, 
-        current_user_id=current_user_id, 
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
         current_user_role=current_user_role
     )
     if not course:
@@ -121,5 +123,62 @@ def get_materials_by_course(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Khóa học không tồn tại hoặc bạn không có quyền truy cập."
         )
-        
+
     return db.query(Material).filter(Material.course_id == course_id).order_by(Material.created_at.desc()).all()
+
+def get_material_detail(
+    db: Session,
+    material_id: int,
+    current_user_id: int,
+    current_user_role: str
+) -> dict:
+    material = db.query(Material).filter(Material.id == material_id).first()
+    if not material:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại."
+        )
+
+    # Sử dụng course_service để kiểm tra quyền truy cập của người dùng
+    course = course_service.get_course(
+        db=db,
+        course_id=material.course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập."
+        )
+
+    # Lấy chunk_count bằng COUNT
+    chunk_count = db.query(func.count(Chunk.id)).filter(Chunk.material_id == material.id).scalar() or 0
+
+    # Trích xuất text preview (tối đa 1000 ký tự)
+    extracted_text_preview = None
+    if chunk_count > 0:
+        preview_parts = []
+        current_len = 0
+
+        chunks_query = (
+            db.query(Chunk.content)
+            .filter(Chunk.material_id == material.id)
+            .order_by(Chunk.chunk_index.asc())
+            .yield_per(20)
+        )
+
+        for (content,) in chunks_query:
+            preview_parts.append(content)
+            current_len += len(content)
+            if current_len >= 1000:
+                break
+
+        # Ghép bằng khoảng trắng để tránh dính từ giữa hai chunk
+        extracted_text_preview = " ".join(preview_parts)[:1000]
+
+    return {
+        **MaterialResponse.model_validate(material).model_dump(),
+        "chunk_count": chunk_count,
+        "extracted_text_preview": extracted_text_preview,
+    }
