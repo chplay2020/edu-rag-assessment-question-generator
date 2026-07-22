@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Courses } from './pages/Courses';
 import { CourseDetail } from './pages/CourseDetail';
 import { CourseMaterials } from './pages/CourseMaterials';
+import { MaterialDetail } from './pages/MaterialDetail';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="/courses" element={<Courses />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/materials" element={<CourseMaterials />} />
+            <Route path="/courses/:courseId/materials/:materialId" element={<MaterialDetail />} />
           </Route>
         </Route>
 

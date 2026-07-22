@@ -1,6 +1,6 @@
 import { apiClient } from './courseApi';
 
-// Types 
+// Types
 export interface Material {
   id: number;
   title: string;
@@ -37,7 +37,7 @@ export function validateFile(file: File): string | null {
   return null;
 }
 
-// API helpers 
+// API helpers
 export async function uploadMaterial(courseId: number, file: File): Promise<Material> {
   const formData = new FormData();
   formData.append('course_id', String(courseId));
@@ -47,14 +47,14 @@ export async function uploadMaterial(courseId: number, file: File): Promise<Mate
   return res.data;
 }
 
-// lấy danh sách tài liệu theo ID khóa học 
+// lấy danh sách tài liệu theo ID khóa học
 export async function getMaterialsByCourse(courseId: number): Promise<Material[]> {
   const res = await apiClient.get<Material[]>(`/materials/course/${courseId}`);
   if (!Array.isArray(res.data)) return [];
   return res.data;
 }
 
-// cảnh báo lỗi API 
+// cảnh báo lỗi API
 export function extractApiError(err: unknown): string {
   const axiosErr = err as {
     response?: {
@@ -118,10 +118,35 @@ export function formatFileSize(bytes: number): string {
 export function getMaterialDownloadUrl(fileUrl: string): string {
   if (!fileUrl) return '#';
   if (fileUrl.startsWith('http')) return fileUrl;
-  
+
   const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000/api/v1';
   // Xóa đuôi /api/v1 để lấy root domain của backend (http://localhost:8000)
   const backendRoot = baseUrl.replace(/\/api\/v1\/?$/, '');
-  
+
   return `${backendRoot}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+}
+
+// Material Detail Types
+export interface MaterialDetail extends Material {
+  chunk_count: number;
+  extracted_text_preview: string | null;
+}
+
+// lấy thông tin chi tiết tài liệu
+export async function getMaterialById(materialId: number): Promise<MaterialDetail> {
+  const res = await apiClient.get<MaterialDetail>(`/materials/${materialId}`);
+  return res.data;
+}
+
+// helper để tải xuống
+export function downloadMaterialFile(fileUrl: string, filename: string): void {
+  const url = getMaterialDownloadUrl(fileUrl);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'download';
+  // target blank for cross-origin downloads
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

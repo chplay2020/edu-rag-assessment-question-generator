@@ -9,7 +9,8 @@ import {
   BookOpen,
   Question,
   Trash,
-  X
+  X,
+  CaretRight
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
 import { fetchCourseById, updateCourse, deleteCourse, type Course } from '../services/courseApi';
@@ -196,7 +197,7 @@ export const CourseDetail: React.FC = () => {
             <li className="cm-breadcrumb-item">
               <Link to="/courses" className="cm-breadcrumb-link">Môn học</Link>
             </li>
-            <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+            <li className="cm-breadcrumb-separator" aria-hidden="true"><CaretRight size={14} weight="bold" /></li>
             <li className="cm-breadcrumb-item">
               <span className="cm-breadcrumb-current" aria-current="page">Chi tiết môn học</span>
             </li>
@@ -219,7 +220,7 @@ export const CourseDetail: React.FC = () => {
           <li className="cm-breadcrumb-item">
             <Link to="/courses" className="cm-breadcrumb-link">Môn học</Link>
           </li>
-          <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+          <li className="cm-breadcrumb-separator" aria-hidden="true"><CaretRight size={14} weight="bold" /></li>
           <li className="cm-breadcrumb-item">
             <span className="cm-breadcrumb-current cm-breadcrumb-course-name" aria-current="page">
               {course.title}
@@ -307,6 +308,15 @@ export const CourseDetail: React.FC = () => {
             <div className="section-card-placeholder">
               <p>Câu hỏi thuộc môn học sẽ được hiển thị sau khi hoàn thành <strong>Question Bank</strong>.</p>
             </div>
+          </div>
+
+          <div className="cd-footer-actions" style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Link
+              to={`/courses`}
+              className="cd-btn-back-outline"
+            >
+              <ArrowLeft size={16} /> Quay lại danh sách môn học
+            </Link>
           </div>
         </div>
         <div className="course-detail-sidebar-col">

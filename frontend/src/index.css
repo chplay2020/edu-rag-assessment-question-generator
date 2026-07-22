@@ -143,11 +143,14 @@ a:hover {
 }
 
 .cm-breadcrumb-link:hover {
-  color: var(--color-primary);
+  color: var(--color-text-main);
 }
 
 .cm-breadcrumb-separator {
-  color: #cbd5e1;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
 

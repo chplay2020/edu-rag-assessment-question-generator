@@ -730,3 +730,21 @@
     gap: 16px;
   }
 }
+.cd-btn-back-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.cd-btn-back-outline:hover {
+  background: #f1f5f9;
+  color: var(--color-text-main);
+}

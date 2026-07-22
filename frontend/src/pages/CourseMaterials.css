@@ -407,25 +407,20 @@
   white-space: nowrap;
   transition:
     background-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.12s ease;
+    box-shadow 0.15s ease;
 }
 
 .cm-btn-primary:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
-  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.28);
-  transform: translateY(-1px);
-}
+  }
 
 .cm-btn-primary:active:not(:disabled) {
-  transform: translateY(0);
   box-shadow: none;
 }
 
 .cm-btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
   box-shadow: none;
 }
 
@@ -721,4 +716,41 @@
   .cm-btn-download {
     padding: 6px 9px;
   }
+}
+.cm-icon-btn-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  padding: 4px;
+}
+.cm-icon-btn-detail:hover,
+.cm-icon-btn-detail:focus-visible {
+  color: var(--color-text-main);
+  outline: none;
+}
+
+
+.cm-btn-back-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.cm-btn-back-outline:hover {
+  background: #f1f5f9;
+  color: var(--color-text-main);
 }

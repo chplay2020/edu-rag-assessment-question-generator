@@ -13,6 +13,8 @@ import {
   WarningCircle,
   FolderDashed,
   BookOpen,
+  ArrowLeft,
+  CaretRight,
 } from '@phosphor-icons/react';
 import { fetchCourseById, type Course } from '../services/courseApi';
 import {
@@ -29,14 +31,14 @@ import {
 } from '../services/materialApi';
 import './CourseMaterials.css';
 
-// Toast 
+// Toast
 
 interface ToastState {
   type: 'success' | 'error';
   message: string;
 }
 
-// icon file 
+// icon file
 
 function FileIcon({ filename, size = 20 }: { filename: string; size?: number }) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
@@ -46,7 +48,7 @@ function FileIcon({ filename, size = 20 }: { filename: string; size?: number }) 
   return <File size={size} weight="duotone" />;
 }
 
-// hiển thị trạng thái 
+// hiển thị trạng thái
 
 function StatusBadge({ status }: { status: string }) {
   const labelMap: Record<string, string> = {
@@ -59,7 +61,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`cm-status-badge cm-status-${status}`}>{label}</span>;
 }
 
-// Component chính 
+// Component chính
 
 export const CourseMaterials: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -88,7 +90,7 @@ export const CourseMaterials: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch helpers 
+  // Fetch helpers
 
   const fetchCourse = useCallback(async () => {
     if (!id) return;
@@ -137,14 +139,14 @@ export const CourseMaterials: React.FC = () => {
     return () => clearInterval(interval);
   }, [materials, fetchMaterials]);
 
-  // Toast helper 
+  // Toast helper
   const showToast = (type: 'success' | 'error', message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ type, message });
     toastTimerRef.current = setTimeout(() => setToast(null), 4000);
   };
 
-  // File selection & validation 
+  // File selection & validation
 
   const handleFileSelect = (file: File) => {
     setUploadError(null);
@@ -176,17 +178,17 @@ export const CourseMaterials: React.FC = () => {
       const fullUrl = getMaterialDownloadUrl(fileUrl);
       const response = await fetch(fullUrl);
       if (!response.ok) throw new Error('Không thể tải file');
-      
+
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      
+
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = blobUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      
+
       // Cleanup
       window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
@@ -267,13 +269,13 @@ export const CourseMaterials: React.FC = () => {
           <li className="cm-breadcrumb-item">
             <Link to="/courses" className="cm-breadcrumb-link">Môn học</Link>
           </li>
-          <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+          <li className="cm-breadcrumb-separator" aria-hidden="true"><CaretRight size={14} weight="bold" /></li>
           <li className="cm-breadcrumb-item">
             <Link to={`/courses/${id}`} className="cm-breadcrumb-link cm-breadcrumb-course-name">
               {courseLoading ? 'Đang tải...' : (course?.title || 'Chi tiết môn học')}
             </Link>
           </li>
-          <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+          <li className="cm-breadcrumb-separator" aria-hidden="true"><CaretRight size={14} weight="bold" /></li>
           <li className="cm-breadcrumb-item">
             <span className="cm-breadcrumb-current" aria-current="page">Tài liệu</span>
           </li>
@@ -505,11 +507,28 @@ export const CourseMaterials: React.FC = () => {
                       <span>Tải xuống</span>
                     </button>
                   )}
+                  <Link
+                    to={`/courses/${courseId}/materials/${mat.id}`}
+                    className="cm-icon-btn-detail"
+                    title={`Xem chi tiết ${mat.title}`}
+                    aria-label={`Xem chi tiết ${mat.title}`}
+                  >
+                    <CaretRight size={20} weight="bold" />
+                  </Link>
                 </li>
               );
             })}
           </ul>
         )}
+      </div>
+
+      <div className="cm-footer-actions" style={{ display: 'flex', justifyContent: 'flex-start' }}>
+        <Link
+          to={`/courses/${courseId}`}
+          className="cm-btn-back-outline"
+        >
+          <ArrowLeft size={16} /> Quay lại chi tiết môn học
+        </Link>
       </div>
     </div>
   );
