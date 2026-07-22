@@ -26,6 +26,10 @@
   --color-border-hover: #cbd5e1;
   /* Slate 300 border on hover */
 
+  /* Badge Color */
+  --color-badge-bg: rgba(79, 70, 229, 0.06);
+  --color-badge-border: rgba(79, 70, 229, 0.12);
+
   /* Subtle Academic Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.02);
@@ -106,4 +110,61 @@ a:hover {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.4);
+}
+
+/* Breadcrumb Component */
+.cm-breadcrumb {
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.cm-breadcrumb-list {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cm-breadcrumb-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.cm-breadcrumb-link {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cm-breadcrumb-link:hover {
+  color: var(--color-primary);
+}
+
+.cm-breadcrumb-separator {
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.cm-breadcrumb-course-name {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-breadcrumb-current {
+  color: var(--color-text-main);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .cm-breadcrumb-course-name {
+    max-width: 120px;
+  }
 }

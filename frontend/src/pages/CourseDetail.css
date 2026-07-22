@@ -5,27 +5,6 @@
   padding: 32px 36px 40px 36px;
 }
 
-/* Back Button */
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  width: fit-content;
-  white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-.btn-back:hover {
-  color: var(--color-primary);
-}
-
 /* Header Card */
 .course-detail-header-card {
   background: #ffffff;
@@ -64,19 +43,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .course-detail-code {
   display: inline-block;
   font-size: 0.725rem;
-  font-weight: 800;
-  padding: 5px 12px;
+  font-weight: 700;
+  padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(79, 70, 229, 0.06);
+  background: var(--color-badge-bg);
   color: var(--color-primary);
-  border: 1px solid rgba(79, 70, 229, 0.1);
+  border: 1px solid var(--color-badge-border);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -112,7 +91,7 @@
 
 .course-detail-title {
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--color-text-main);
   letter-spacing: -0.03em;
   margin: 0;
@@ -211,12 +190,24 @@
   box-shadow: 0 4px 10px rgba(79, 70, 229, 0.05);
 }
 
-/* Main Row: Info + Stats */
-.course-detail-main-row {
+/* Main / Sidebar Layout */
+.course-detail-body-layout {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 20px;
-  align-items: stretch;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.course-detail-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.course-detail-sidebar-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 /* Info Card */
@@ -244,7 +235,7 @@
   display: block;
   width: 3px;
   height: 14px;
-  background-color: #00a1c0;
+  background-color: var(--color-primary);
   border-radius: 4px;
 }
 
@@ -453,6 +444,7 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 7px 14px;
   border-radius: 8px;
@@ -463,6 +455,7 @@
   color: #a1a1aa;
   cursor: not-allowed;
   flex-shrink: 0;
+  min-width: 140px;
 }
 
 .btn-section-action.disabled-materials {
@@ -475,6 +468,22 @@
   background-color: rgba(79, 70, 229, 0.05);
   color: rgba(79, 70, 229, 0.6);
   border-color: rgba(79, 70, 229, 0.2);
+}
+
+/* active materials button */
+.btn-section-action.btn-section-materials-active {
+  background-color: rgba(2, 132, 199, 0.06);
+  color: #0284c7;
+  border-color: rgba(2, 132, 199, 0.2);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.btn-section-action.btn-section-materials-active:hover {
+  background-color: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+  border-color: rgba(2, 132, 199, 0.35);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
 }
 
 .section-card-placeholder {
@@ -502,16 +511,17 @@
 
 /* DANGER ZONE */
 .course-detail-danger-zone {
-  margin-top: 32px;
+  margin-top: 0;
   border: 1px solid #fecaca;
   border-radius: 12px;
   background-color: #ffffff;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(239, 68, 68, 0.05);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 24px;
 }
 
 .danger-zone-info {
@@ -535,6 +545,11 @@
 }
 
 .btn-danger-outline {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex-shrink: 0;
   padding: 8px 16px;
   border-radius: 8px;
@@ -547,6 +562,7 @@
   white-space: nowrap;
   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
+
 
 .btn-danger-outline:hover {
   background-color: #fef2f2;
@@ -664,7 +680,7 @@
 
 /* Responsive */
 @media (max-width: 900px) {
-  .course-detail-main-row {
+  .course-detail-body-layout {
     grid-template-columns: 1fr;
   }
 

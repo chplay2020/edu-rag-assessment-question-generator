@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   GraduationCap,
@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
 import { fetchCourseById, updateCourse, deleteCourse, type Course } from '../services/courseApi';
+import { getMaterialsByCourse } from '../services/materialApi';
 import './CourseDetail.css';
 export const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,9 @@ export const CourseDetail: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // real materials count
+  const [materialsCount, setMaterialsCount] = useState<number | null>(null);
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'Vừa cập nhật';
@@ -76,6 +80,14 @@ export const CourseDetail: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [id, navigate]);
+
+  // fetch real materials count when course id changes
+  useEffect(() => {
+    if (!id) return;
+    getMaterialsByCourse(Number(id))
+      .then((list) => setMaterialsCount(list.length))
+      .catch(() => setMaterialsCount(null));
+  }, [id]);
 
   const handleOpenEditModal = () => {
     setSubmitError(null);
@@ -179,9 +191,17 @@ export const CourseDetail: React.FC = () => {
   if (notFound || !course) {
     return (
       <div className="course-detail-container">
-        <button className="btn-back" onClick={() => navigate('/courses')}>
-          <ArrowLeft size={16} weight="bold" /> Quay lại danh sách
-        </button>
+        <nav className="cm-breadcrumb" aria-label="Breadcrumb">
+          <ol className="cm-breadcrumb-list">
+            <li className="cm-breadcrumb-item">
+              <Link to="/courses" className="cm-breadcrumb-link">Môn học</Link>
+            </li>
+            <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+            <li className="cm-breadcrumb-item">
+              <span className="cm-breadcrumb-current" aria-current="page">Chi tiết môn học</span>
+            </li>
+          </ol>
+        </nav>
         <div className="course-detail-not-found">
           <GraduationCap size={48} weight="duotone" />
           <h2>Không tìm thấy môn học</h2>
@@ -193,10 +213,20 @@ export const CourseDetail: React.FC = () => {
 
   return (
     <div className="course-detail-container">
-      {/* Back button */}
-      <button className="btn-back" onClick={() => navigate('/courses')}>
-        <ArrowLeft size={16} weight="bold" /> Quay lại danh sách môn học
-      </button>
+      {/* Breadcrumb */}
+      <nav className="cm-breadcrumb" aria-label="Breadcrumb">
+        <ol className="cm-breadcrumb-list">
+          <li className="cm-breadcrumb-item">
+            <Link to="/courses" className="cm-breadcrumb-link">Môn học</Link>
+          </li>
+          <li className="cm-breadcrumb-separator" aria-hidden="true">/</li>
+          <li className="cm-breadcrumb-item">
+            <span className="cm-breadcrumb-current cm-breadcrumb-course-name" aria-current="page">
+              {course.title}
+            </span>
+          </li>
+        </ol>
+      </nav>
 
       {/* Header Card */}
       <div className="course-detail-header-card">
@@ -223,96 +253,95 @@ export const CourseDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Info + Stats row */}
-      <div className="course-detail-main-row">
-        {/* Basic info card */}
-        <div className="course-detail-info-card">
-          <div className="course-detail-card-header-row">
-            <h2 className="course-detail-card-title" style={{ marginBottom: 0 }}>Thông tin cơ bản</h2>
-            <div className="course-detail-updated-inline">
+      {/* Body Layout (Main / Sidebar) */}
+      <div className="course-detail-body-layout">
+
+        <div className="course-detail-main-col">
+          {/* Description card */}
+          <div className="course-detail-info-card">
+            <h2 className="course-detail-card-title">Mô tả môn học</h2>
+            <p className="course-detail-desc" style={{ marginTop: '0' }}>{course.description}</p>
+          </div>
+
+          {/* Tài liệu học tập */}
+          <div className="course-detail-section-card panel-materials">
+            <div className="section-card-header">
+              <div className="section-card-icon materials-icon">
+                <BookOpen size={20} weight="duotone" />
+              </div>
+              <div>
+                <h3 className="section-card-title">Tài liệu học tập</h3>
+                <p className="section-card-count">
+                  {materialsCount === null ? '—' : `${materialsCount} tài liệu`}
+                </p>
+              </div>
+              <button
+                className="btn-section-action btn-section-materials-active"
+                onClick={() => navigate(`/courses/${id}/materials`)}
+                title="Quản lý tài liệu học tập"
+              >
+                <ArrowSquareOut size={14} weight="bold" />
+                Quản lý tài liệu
+              </button>
+            </div>
+            <div className="section-card-placeholder">
+              <p>Xem, tải lên và quản lý toàn bộ tài liệu học tập của môn học này.</p>
+            </div>
+          </div>
+
+          {/* Câu hỏi luyện tập */}
+          <div className="course-detail-section-card panel-questions">
+            <div className="section-card-header">
+              <div className="section-card-icon questions-icon">
+                <Question size={20} weight="duotone" />
+              </div>
+              <div>
+                <h3 className="section-card-title">Câu hỏi luyện tập</h3>
+                <p className="section-card-count">{course.questionsCount} câu hỏi</p>
+              </div>
+              <button className="btn-section-action disabled-questions" disabled title="Sẽ hoàn thiện trong task Question Bank">
+                <ArrowSquareOut size={14} weight="bold" />
+                Xem câu hỏi
+              </button>
+            </div>
+            <div className="section-card-placeholder">
+              <p>Câu hỏi thuộc môn học sẽ được hiển thị sau khi hoàn thành <strong>Question Bank</strong>.</p>
+            </div>
+          </div>
+        </div>
+        <div className="course-detail-sidebar-col">
+          <div className="course-detail-info-card">
+            <div className="course-detail-card-header-row">
+              <h2 className="course-detail-card-title" style={{ marginBottom: 0 }}>Thông tin cơ bản</h2>
+            </div>
+            <div className="course-detail-updated-inline" style={{ marginBottom: '16px' }}>
               <span>Cập nhật: {formatDate(course.updated_at)}</span>
             </div>
-          </div>
-          <div className="course-detail-info-list info-chip-list">
-            <div className="info-chip-row">
-              <div className="info-chip-icon-wrapper">
-                <User size={16} weight="duotone" />
+            <div className="course-detail-info-list info-chip-list" style={{ flexDirection: 'column' }}>
+              <div className="info-chip-row">
+                <div className="info-chip-icon-wrapper">
+                  <User size={16} weight="duotone" />
+                </div>
+                <div className="info-chip-content">
+                  <span className="info-chip-label">Giảng viên</span>
+                  <span className="info-chip-value">{course.instructor ?? '—'}</span>
+                </div>
               </div>
-              <div className="info-chip-content">
-                <span className="info-chip-label">Giảng viên</span>
-                <span className="info-chip-value">{course.instructor ?? '—'}</span>
-              </div>
             </div>
           </div>
-        </div>
 
-        {/* Description card */}
-        <div className="course-detail-info-card">
-          <h2 className="course-detail-card-title">Mô tả môn học</h2>
-          <p className="course-detail-desc" style={{ marginTop: '0' }}>{course.description}</p>
-        </div>
-      </div>
-
-      {/* Placeholder sections */}
-      <div className="course-detail-sections-row">
-        {/* Materials placeholder */}
-        <div className="course-detail-section-card panel-materials">
-          <div className="section-card-header">
-            <div className="section-card-icon materials-icon">
-              <BookOpen size={20} weight="duotone" />
+          {/* DANGER ZONE */}
+          <div className="course-detail-danger-zone" style={{ marginTop: 0 }}>
+            <div className="danger-zone-info">
+              <h3>Xóa môn học này</h3>
+              <p>Môn học sẽ bị ẩn khỏi danh sách và không thể sử dụng tiếp.</p>
             </div>
-            <div>
-              <h3 className="section-card-title">Tài liệu học tập</h3>
-              <p className="section-card-count">{course.materialsCount} tài liệu</p>
-            </div>
-            <button className="btn-section-action disabled-materials" disabled title="Sẽ hoàn thiện trong task Material UI">
-              <ArrowSquareOut size={14} weight="bold" />
-              Xem tài liệu
+            <button className="btn-danger-outline" onClick={() => setIsDeleteModalOpen(true)}>
+              <Trash size={16} />
+              Xóa môn học
             </button>
           </div>
-          <div className="section-card-placeholder">
-            <p>Danh sách tài liệu học tập sẽ được hiển thị sau khi hoàn thành <strong>Material UI</strong>.</p>
-            <p className="section-notice">Thông tin chi tiết sẽ được hoàn thiện trong các task quản lý học liệu và ngân hàng câu hỏi tiếp theo.</p>
-          </div>
         </div>
-
-        {/* Questions placeholder */}
-        <div className="course-detail-section-card panel-questions">
-          <div className="section-card-header">
-            <div className="section-card-icon questions-icon">
-              <Question size={20} weight="duotone" />
-            </div>
-            <div>
-              <h3 className="section-card-title">Câu hỏi luyện tập</h3>
-              <p className="section-card-count">{course.questionsCount} câu hỏi</p>
-            </div>
-            <button className="btn-section-action disabled-questions" disabled title="Sẽ hoàn thiện trong task Question Bank">
-              <ArrowSquareOut size={14} weight="bold" />
-              Xem câu hỏi
-            </button>
-          </div>
-          <div className="section-card-placeholder">
-            <p>Câu hỏi thuộc môn học sẽ được hiển thị sau khi hoàn thành <strong>Question Bank</strong>.</p>
-            <p className="section-notice">Thông tin chi tiết sẽ được hoàn thiện trong các task quản lý học liệu và ngân hàng câu hỏi tiếp theo.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* DANGER ZONE */}
-      <div className="course-detail-danger-zone">
-        <div className="danger-zone-info">
-          <h3>Xóa môn học này</h3>
-          <p>Hành động này không thể hoàn tác. Toàn bộ dữ liệu sẽ bị xóa vĩnh viễn.</p>
-        </div>
-        <button
-          className="btn-danger-outline"
-          onClick={() => {
-            setDeleteError(null);
-            setIsDeleteModalOpen(true);
-          }}
-        >
-          Xóa môn học
-        </button>
       </div>
 
       <CourseFormModal
