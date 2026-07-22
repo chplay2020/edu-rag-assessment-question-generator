@@ -26,6 +26,11 @@ class Material(Base):
     jobs = relationship("Job", back_populates="material", cascade="all, delete-orphan")
     questions = relationship("Question", back_populates="material", cascade="all, delete-orphan")
 
+    @property
+    def file_url(self) -> str:
+        # Đường dẫn tĩnh phục vụ frontend 
+        return f"/{self.file_path}".replace("\\", "/")
+
 
 class Chunk(Base):
     __tablename__ = "chunks"
@@ -34,8 +39,7 @@ class Chunk(Base):
     material_id = Column(Integer, ForeignKey("materials.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
     chunk_index = Column(Integer, nullable=False)
-    # Chưa tích hợp thực tế pgvector, tạm thời có thể lưu embedding dưới dạng chuỗi hoặc bỏ trống
-    # embedding = Column(MockVector) 
+     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

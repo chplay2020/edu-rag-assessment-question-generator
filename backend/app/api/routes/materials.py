@@ -1,34 +1,40 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends
-from app.api.deps import get_current_active_lecturer
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from typing import List, Any
+from app.api.deps import get_db, get_current_user_id, get_current_user_role, get_current_active_lecturer
 from app.schemas.material_schema import MaterialResponse
-from datetime import datetime
+from app.services import material_service
 
 router = APIRouter()
 
 @router.post("/upload", response_model=MaterialResponse, dependencies=[Depends(get_current_active_lecturer)])
-def upload_material(course_id: int = Form(...), file: UploadFile = File(...)) -> Any:
-    """Upload tài liệu học tập (PDF, DOCX)"""
-    return MaterialResponse(
-        id=1, 
-        title=file.filename or "uploaded_file", 
-        course_id=course_id, 
-        uploaded_by=1,
-        status="processing", 
-        created_at=datetime.now()
+def upload_material(
+    course_id: int = Form(...), 
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
+    """Upload tài liệu học tập (PDF, DOCX, TXT)"""
+    return material_service.upload_material(
+        db=db,
+        course_id=course_id,
+        file=file,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
     )
 
-@router.get("/course/{course_id}", response_model=List[MaterialResponse])
-def get_materials_by_course(course_id: int) -> Any:
+@router.get("/course/{course_id}", response_model=List[MaterialResponse], dependencies=[Depends(get_current_active_lecturer)])
+def get_materials_by_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
     """Lấy danh sách tài liệu của khóa học"""
-    return [
-        MaterialResponse(
-            id=1, 
-            title="Syllabus.pdf", 
-            course_id=course_id, 
-            uploaded_by=1,
-            status="done", 
-            file_url="/storage/Syllabus.pdf",
-            created_at=datetime.now()
-        )
-    ]
+    return material_service.get_materials_by_course(
+        db=db,
+        course_id=course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
