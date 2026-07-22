@@ -365,6 +365,71 @@
           ]
         }
       ]
+    },
+    {
+      "name": "3. Materials",
+      "item": [
+        {
+          "name": "Upload Material",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "course_id",
+                  "value": "{{course_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "description": "Supported formats: PDF, DOCX, TXT. Max size: 10 MB.",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/materials/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "materials",
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Materials By Course",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/materials/course/{{course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "materials",
+                "course",
+                "{{course_id}}"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

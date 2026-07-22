@@ -9,7 +9,6 @@ import {
   BookOpen,
   Question,
   Trash,
-  WarningCircle,
   X
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
