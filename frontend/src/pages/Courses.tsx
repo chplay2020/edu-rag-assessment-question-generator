@@ -42,6 +42,7 @@ export const Courses: React.FC = () => {
 
   // States for Dropdown & Delete Modal
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [dropdownPlacement, setDropdownPlacement] = useState<'up' | 'down'>('down');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,6 +53,31 @@ export const Courses: React.FC = () => {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  const toggleCourseDropdown = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    courseId: number
+  ) => {
+    event.stopPropagation();
+
+    if (activeDropdownId === courseId) {
+      setActiveDropdownId(null);
+      return;
+    }
+
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+    const estimatedMenuHeight = 92;
+    const menuGap = 8;
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+
+    setDropdownPlacement(
+      spaceBelow < estimatedMenuHeight + menuGap && spaceAbove > spaceBelow
+        ? 'up'
+        : 'down'
+    );
+    setActiveDropdownId(courseId);
+  };
 
   // Load dữ liệu từ Course API (T014)
   const loadCourses = async () => {
@@ -215,7 +241,7 @@ export const Courses: React.FC = () => {
     <motion.div
       className="courses-container"
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="show"
     >
       {/* Title Header */}
@@ -354,17 +380,14 @@ export const Courses: React.FC = () => {
                           <div className="course-card-dropdown-wrapper">
                             <button
                               className="btn-course-kebab"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveDropdownId(activeDropdownId === course.id ? null : course.id);
-                              }}
+                              onClick={(e) => toggleCourseDropdown(e, course.id)}
                               title="Tùy chọn"
                             >
                               <DotsThreeVertical size={20} weight="bold" />
                             </button>
                             
                             {activeDropdownId === course.id && (
-                              <div className="course-card-dropdown-menu">
+                              <div className={`course-card-dropdown-menu dropdown-${dropdownPlacement}`}>
                                 <button
                                   className="dropdown-item"
                                   onClick={(e) => {
@@ -466,17 +489,14 @@ export const Courses: React.FC = () => {
                       <div className="course-card-dropdown-wrapper" style={{ position: 'relative' }}>
                         <button
                           className="btn-course-kebab"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveDropdownId(activeDropdownId === course.id ? null : course.id);
-                          }}
+                          onClick={(e) => toggleCourseDropdown(e, course.id)}
                           title="Tùy chọn"
                         >
                           <DotsThreeVertical size={20} weight="bold" />
                         </button>
                         
                         {activeDropdownId === course.id && (
-                          <div className="course-card-dropdown-menu" style={{ right: 0, top: '100%', zIndex: 10 }}>
+                          <div className={`course-card-dropdown-menu dropdown-${dropdownPlacement}`}>
                             <button
                               className="dropdown-item"
                               onClick={(e) => {

@@ -117,7 +117,9 @@ export const MainLayout: React.FC = () => {
       <div className="main-content">
         {/* Page Content (Outlet) */}
         <main className="page-content">
-          <Outlet />
+          <div className="page-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
 

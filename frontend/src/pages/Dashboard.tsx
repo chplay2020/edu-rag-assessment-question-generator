@@ -57,7 +57,7 @@ export const Dashboard: React.FC = () => {
       className="dashboard-container"
       style={{ padding: '32px 32px 40px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="show"
     >
       {/* Dashboard Welcome Header */}

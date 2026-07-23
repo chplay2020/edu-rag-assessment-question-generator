@@ -14,6 +14,11 @@
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "material_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -425,6 +430,28 @@
                 "materials",
                 "course",
                 "{{course_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Material Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/materials/{{material_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "materials",
+                "{{material_id}}"
               ]
             }
           }

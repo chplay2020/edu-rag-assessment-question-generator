@@ -42,6 +42,22 @@ export interface Course {
   status?: 'active' | 'inactive';
 }
 
+const courseCache = new Map<string, Course>();
+
+function getCourseCacheKey(id: number): string {
+  const session = localStorage.getItem('access_token') ?? 'anonymous';
+  return `${session}:${id}`;
+}
+
+export function getCachedCourseById(id: number): Course | null {
+  return courseCache.get(getCourseCacheKey(id)) ?? null;
+}
+
+function cacheCourse(course: Course): Course {
+  courseCache.set(getCourseCacheKey(course.id), course);
+  return course;
+}
+
 export function mapApiCourse(raw: CourseApiResponse): Course {
   return {
     id: raw.id,
@@ -67,7 +83,7 @@ export async function fetchCourses(): Promise<Course[]> {
     throw new Error('Invalid response format from GET /courses');
   }
 
-  return res.data.map(mapApiCourse);
+  return res.data.map((raw) => cacheCourse(mapApiCourse(raw)));
 }
 
 // Lấy thông tin chi tiết của một môn học theo id.
@@ -76,7 +92,7 @@ export async function fetchCourses(): Promise<Course[]> {
 export async function fetchCourseById(id: number): Promise<Course | null> {
   try {
     const res = await apiClient.get<CourseApiResponse>(`/courses/${id}`);
-    return mapApiCourse(res.data);
+    return cacheCourse(mapApiCourse(res.data));
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 404) {
       return null;
@@ -102,16 +118,17 @@ export interface CourseUpdatePayload {
 // Tạo môn học mới
 export async function createCourse(payload: CourseCreatePayload): Promise<Course> {
   const res = await apiClient.post<CourseApiResponse>(`/courses`, payload);
-  return mapApiCourse(res.data);
+  return cacheCourse(mapApiCourse(res.data));
 }
 
 // Cập nhật môn học
 export async function updateCourse(id: number, payload: CourseUpdatePayload): Promise<Course> {
   const res = await apiClient.put<CourseApiResponse>(`/courses/${id}`, payload);
-  return mapApiCourse(res.data);
+  return cacheCourse(mapApiCourse(res.data));
 }
 
 // Xóa môn học (soft delete)
 export async function deleteCourse(id: number): Promise<void> {
   await apiClient.delete(`/courses/${id}`);
+  courseCache.delete(getCourseCacheKey(id));
 }

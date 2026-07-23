@@ -415,7 +415,6 @@
 
 .course-card-dropdown-menu {
   position: absolute;
-  top: calc(100% + 4px);
   right: 0;
   background-color: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -428,6 +427,19 @@
   flex-direction: column;
   gap: 2px;
   animation: dropdownFadeIn 0.15s ease-out;
+}
+
+.course-card-dropdown-menu.dropdown-down {
+  top: calc(100% + 4px);
+  bottom: auto;
+  transform-origin: top right;
+}
+
+.course-card-dropdown-menu.dropdown-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+  transform-origin: bottom right;
+  animation-name: dropdownFadeInUp;
 }
 
 @keyframes dropdownFadeIn {
@@ -1007,5 +1019,16 @@
 
   .table-arrow-cell {
     display: none;
+  }
+}
+
+@keyframes dropdownFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
