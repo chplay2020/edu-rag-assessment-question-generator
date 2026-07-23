@@ -8,6 +8,7 @@ venv/
 __pycache__/
 *.py[cod]
 
+
 .agents/RULES.md
 .agents/skills/hallmark/
 
@@ -15,3 +16,5 @@ backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
 backend/storage/test-files/*
 !backend/storage/test-files/.gitkeep
+backend/storage/processed/*
+!backend/storage/processed/.gitkeep
