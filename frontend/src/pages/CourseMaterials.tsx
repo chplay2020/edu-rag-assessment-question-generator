@@ -55,11 +55,19 @@ function StatusBadge({ status }: { status: string }) {
   const labelMap: Record<string, string> = {
     processing: 'Đang xử lý',
     ready: 'Sẵn sàng',
-    error: 'Lỗi',
-    pending: 'Đang chờ',
+    error: 'Xử lý thất bại',
+    pending: 'Chờ xử lý',
+    done: 'Đã xử lý',
+    completed: 'Đã xử lý',
+    failed: 'Xử lý thất bại',
   };
   const label = labelMap[status] ?? status;
-  return <span className={`cm-status-badge cm-status-${status}`}>{label}</span>;
+
+  const badgeStatus =
+    status === 'completed' ? 'done'
+      : status === 'error' ? 'failed'
+        : status;
+  return <span className={`cm-status-badge cm-status-${badgeStatus}`}>{label}</span>;
 }
 
 // Component chính

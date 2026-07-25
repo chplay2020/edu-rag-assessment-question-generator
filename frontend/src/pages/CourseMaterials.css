@@ -601,11 +601,13 @@
   background-color: #f59e0b;
 }
 
-.cm-status-ready::before {
+.cm-status-ready::before,
+.cm-status-done::before {
   background-color: #10b981;
 }
 
-.cm-status-error::before {
+.cm-status-error::before,
+.cm-status-failed::before {
   background-color: #ef4444;
 }
 
