@@ -1,5 +1,6 @@
 import os
 import re
+from typing import List, Dict
 
 def clean_text(raw_text: str) -> str:
 
@@ -7,12 +8,12 @@ def clean_text(raw_text: str) -> str:
     text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
     
     # Chia theo trang bằng form-feed \f
-    pages = text.split("\f")
-    
-    cleaned_pages = []
+    pages: List[str] = text.split("\f")
+
+    cleaned_pages: List[List[str]] = []
     for page in pages:
         lines = page.split("\n")
-        cleaned_lines = []
+        cleaned_lines: List[str] = []
         for line in lines:
             # Cắt khoảng trắng thừa
             line = line.strip() 
@@ -23,8 +24,8 @@ def clean_text(raw_text: str) -> str:
         
     # Xử lý loại bỏ Header / Footer lặp lại (nếu có từ 2 trang trở lên)
     if len(cleaned_pages) >= 2:
-        first_lines = {}
-        last_lines = {}
+        first_lines: Dict[int, str] = {}
+        last_lines: Dict[int, str] = {}
         
         # Tìm dòng đầu/cuối có chứa nội dung của từng trang
         for i, page_lines in enumerate(cleaned_pages):
@@ -34,11 +35,11 @@ def clean_text(raw_text: str) -> str:
                 last_lines[i] = non_empty[-1]
                 
         # Đếm số lần xuất hiện
-        first_line_counts = {}
+        first_line_counts: Dict[str, int] = {}
         for line in first_lines.values():
             first_line_counts[line] = first_line_counts.get(line, 0) + 1
             
-        last_line_counts = {}
+        last_line_counts: Dict[str, int] = {}
         for line in last_lines.values():
             last_line_counts[line] = last_line_counts.get(line, 0) + 1
             
@@ -81,12 +82,12 @@ def clean_text(raw_text: str) -> str:
                 page_lines[last_idx] = ""
 
     # Gộp tất cả các trang lại, bỏ qua \f
-    final_lines = []
+    final_lines: List[str] = []
     for page_lines in cleaned_pages:
         final_lines.extend(page_lines)
         
     # Thu gọn nhiều dòng trống liên tiếp thành tối đa 1 dòng trống
-    result_lines = []
+    result_lines: List[str] = []
     empty_streak = 0
     for line in final_lines:
         if not line:

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-import fitz  # PyMuPDF
+from typing import Any, List, cast
+import fitz  # PyMuPDF  # type: ignore
 from app.models.material import Material
 
 class TextExtractionError(Exception):
@@ -12,13 +13,17 @@ def extract_pdf_text(file_path: str | Path) -> str:
         raise TextExtractionError(f"File not found: {file_path}")
     
     try:
-        doc = fitz.open(file_path)
+        # PyMuPDF lacks type stubs in this environment; ignore typing for open
+        doc = fitz.open(file_path)  # type: ignore
     except Exception as e:
         raise TextExtractionError(f"Failed to open PDF: {e}")
-    
-    pages_text = []
-    for page in doc:
-        text = page.get_text()
+
+    pages_text: List[str] = []
+    doc_any = cast(Any, doc)
+    for page in doc_any:
+        # get_text may return different types depending on mode; coerce to str
+        page_text = getattr(page, "get_text", lambda: "")()
+        text = str(page_text)
         pages_text.append(text)
     
     doc.close()
@@ -79,6 +84,6 @@ def save_raw_text(material_id: int, text: str) -> str:
 
 # hàm kết hợp trích xuất và lưu raw text
 def extract_and_save(material: Material) -> str:
-    text = extract_text(material.file_path)
-    raw_txt_path = save_raw_text(material.id, text)
+    text = extract_text(cast(str, material.file_path))
+    raw_txt_path = save_raw_text(cast(int, material.id), text)
     return raw_txt_path
