@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any, cast
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -87,7 +88,7 @@ def get_course(
         return None
         
     # Kiểm tra quyền sở hữu đối với lecturer
-    if current_user_role == "lecturer" and course.created_by != current_user_id:
+    if current_user_role == "lecturer" and cast(int, course.created_by) != current_user_id:
         return None
         
     return course
@@ -113,7 +114,7 @@ def update_course(
         setattr(db_obj, field, update_data[field])
         
     # Ghi nhận thời gian cập nhật theo giờ UTC
-    db_obj.updated_at = datetime.now(timezone.utc)
+    cast(Any, db_obj).updated_at = datetime.now(timezone.utc)
     
     db.add(db_obj)
     try:
@@ -142,8 +143,8 @@ def soft_delete_course(
         )
         
     # Đánh dấu xóa mềm và lưu thời gian cập nhật theo giờ UTC
-    db_obj.is_deleted = True
-    db_obj.updated_at = datetime.now(timezone.utc)
+    cast(Any, db_obj).is_deleted = True
+    cast(Any, db_obj).updated_at = datetime.now(timezone.utc)
     
     db.add(db_obj)
     db.commit()

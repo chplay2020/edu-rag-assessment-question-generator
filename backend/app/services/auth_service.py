@@ -1,3 +1,4 @@
+from typing import cast
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.auth_schema import UserCreate
@@ -23,6 +24,6 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     user = get_user_by_email(db, email)
     if not user:
         return None
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, cast(str, user.hashed_password)):
         return None
     return user

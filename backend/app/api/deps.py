@@ -1,17 +1,17 @@
-from typing import Generator
+from typing import Generator, Optional, Any, cast
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.config import settings
-import jwt
+import jwt  # type: ignore
 from pydantic import ValidationError
 from app.models.user import User
 from app.services.auth_service import get_user_by_email
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
-def get_db() -> Generator:
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
@@ -22,10 +22,10 @@ def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        email: str = payload.get("sub")
+        # isolate PyJWT decode typing via local wrapper
+        payload_raw: Any = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])  # type: ignore
+        payload: dict[str, Any] = payload_raw
+        email: Optional[str] = payload.get("sub")
         if email is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -45,7 +45,7 @@ def get_current_user(
             detail="Người dùng không tồn tại",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not user.is_active:
+    if not cast(bool, user.is_active):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Người dùng đã bị vô hiệu hóa"
@@ -53,15 +53,15 @@ def get_current_user(
     return user
 
 def get_current_user_id(current_user: User = Depends(get_current_user)) -> int:
-    return current_user.id
+    return cast(int, current_user.id)
 
 def get_current_user_role(current_user: User = Depends(get_current_user)) -> str:
-    return current_user.role
+    return cast(str, current_user.role)
 
 def get_current_active_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if current_user.role != "admin":
+    if cast(str, current_user.role) != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Không đủ quyền truy cập (yêu cầu Admin)"
         )
@@ -71,7 +71,7 @@ def get_current_active_lecturer(
     current_user: User = Depends(get_current_user),
 ) -> User:
     # Admin cũng có quyền của Lecturer
-    if current_user.role not in ["lecturer", "admin"]:
+    if cast(str, current_user.role) not in ["lecturer", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Không đủ quyền truy cập (yêu cầu Giảng viên)"
         )

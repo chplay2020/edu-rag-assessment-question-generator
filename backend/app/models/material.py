@@ -2,11 +2,13 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 # Tạm thời mock Vector type, sau này cài pgvector thì sẽ import từ pgvector.sqlalchemy
+from typing import Any
 from sqlalchemy.types import UserDefinedType
 
-class MockVector(UserDefinedType):
-    def get_col_spec(self, **kw):
-        return "VECTOR(768)" # Tùy theo mô hình embedding
+
+class MockVector(UserDefinedType[Any]):
+    def get_col_spec(self, **kw: Any) -> str:
+        return "VECTOR(768)"  # Tùy theo mô hình embedding
 
 class Material(Base):
     __tablename__ = "materials"
