@@ -39,15 +39,19 @@ services:
     environment:
       # URL trỏ tới service db nội bộ trong Docker network
       - POSTGRES_SERVER=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=edu_rag_db
-      - QDRANT_URL=http://qdrant:6333
-      - QDRANT_MATERIAL_COLLECTION=material_chunks
-      - QDRANT_QUESTION_COLLECTION=question_vectors
-      - EMBEDDING_PROVIDER=fake
-      - EMBEDDING_MODEL=fake-deterministic-embedding
-      - EMBEDDING_DIMENSION=768
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-edu_rag_db}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+      - QDRANT_MATERIAL_COLLECTION=${QDRANT_MATERIAL_COLLECTION:-material_chunks}
+      - QDRANT_QUESTION_COLLECTION=${QDRANT_QUESTION_COLLECTION:-question_vectors}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-fake}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-fake-deterministic-embedding}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_MODEL=${LLM_MODEL:-gemini-2.5-flash}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     volumes:
       # Mount code trực tiếp vào container để hỗ trợ live-reload
       - ./backend:/app
