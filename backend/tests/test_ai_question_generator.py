@@ -55,7 +55,7 @@ def test_question_generator_output_parses_successfully(monkeypatch):
 
     question = batch.questions[0]
     assert question.difficulty == "hard"
-    assert question.bloom_level == "analyze"
+    assert question.bloom_level == "analyze" 
 
 
 def test_fake_provider_does_not_call_gemini(monkeypatch):

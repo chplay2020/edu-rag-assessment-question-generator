@@ -15,3 +15,4 @@ PyMuPDF>=1.24.0
 pytest>=8.0.0
 qdrant-client>=1.10.1
 google-genai>=0.3.0
+ 

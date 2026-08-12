@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "edu_rag_db"
 
     # Vector store
-    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_URL: str = "http://localhost:6333" 
     QDRANT_API_KEY: str | None = None
     QDRANT_MATERIAL_COLLECTION: str = "material_chunks"
     QDRANT_QUESTION_COLLECTION: str = "question_vectors"
