@@ -13,6 +13,7 @@ def create_question_generation_job(
     material_id: int,
     current_user_id: int,
     current_user_role: str,
+    config: dict[str, Any] | None = None,
 ) -> Job:
     material = db.query(Material).filter(Material.id == material_id).first()
     if not material:
@@ -43,6 +44,7 @@ def create_question_generation_job(
         material_id=material_id,
         task_type="generate_questions",
         status="pending",
+        config=config,
     )
     db.add(job)
     db.commit()
@@ -56,6 +58,7 @@ def job_summary(job: Job) -> dict[str, Any]:
         "material_id": cast(int, job.material_id),
         "task_type": cast(str, job.task_type),
         "job_status": cast(str, job.status),
+        "config": cast(dict[str, Any] | None, job.config),
     }
 
 
