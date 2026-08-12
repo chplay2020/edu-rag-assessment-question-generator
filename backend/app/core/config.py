@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "fake"
     EMBEDDING_MODEL: str = "fake-deterministic-embedding"
     EMBEDDING_DIMENSION: int = 768
+
+    # LLM
+    LLM_PROVIDER: str = "gemini"
+    LLM_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_KEY: str | None = None
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
