@@ -1,0 +1,12 @@
+Classify the Bloom taxonomy level of the question.
+
+Return only JSON:
+{"bloom_level": "remember|understand|apply|analyze|evaluate|create"}
+
+Use:
+- remember: recall facts, definitions, lists
+- understand: explain, summarize, describe
+- apply: use a concept or procedure
+- analyze: compare, distinguish, identify relationships
+- evaluate: judge, justify, critique
+- create: design, construct, propose something new
