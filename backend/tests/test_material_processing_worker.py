@@ -23,6 +23,27 @@ def db_session_factory():
     return TestingSessionLocal
 
 
+@pytest.fixture()
+def qdrant_indexing_mock(monkeypatch):
+    calls = {"texts": None, "chunks": None, "vectors": None, "ensure_called": False}
+
+    class FakeVectorStore:
+        def ensure_collections(self):
+            calls["ensure_called"] = True
+
+        def upsert_material_chunks(self, chunks, vectors):
+            calls["chunks"] = chunks
+            calls["vectors"] = vectors
+
+    monkeypatch.setattr(
+        material_worker,
+        "embed_texts",
+        lambda texts: calls.update({"texts": texts}) or [[0.1, 0.2, 0.3] for _ in texts],
+    )
+    monkeypatch.setattr(material_worker, "get_vector_store", lambda: FakeVectorStore())
+    return calls
+
+
 def _seed_material(db_session_factory, file_path: str, status: str = "uploaded") -> int:
     db = db_session_factory()
     user = User(
@@ -63,7 +84,7 @@ def _seed_material(db_session_factory, file_path: str, status: str = "uploaded")
 
 
 def test_worker_success_sets_material_processed_and_inserts_chunks(
-    tmp_path, monkeypatch, db_session_factory
+    tmp_path, monkeypatch, db_session_factory, qdrant_indexing_mock
 ):
     source = tmp_path / "lesson.txt"
     source.write_text("A" * 900, encoding="utf-8")
@@ -82,6 +103,10 @@ def test_worker_success_sets_material_processed_and_inserts_chunks(
     assert material.status == "processed"
     assert len(chunks) >= 1
     assert [chunk.chunk_index for chunk in chunks] == list(range(len(chunks)))
+    assert qdrant_indexing_mock["ensure_called"] is True
+    assert qdrant_indexing_mock["texts"] == [chunk.content for chunk in chunks]
+    assert len(qdrant_indexing_mock["chunks"]) == len(chunks)
+    assert len(qdrant_indexing_mock["vectors"]) == len(chunks)
 
 
 def test_worker_failure_sets_material_failed(tmp_path, monkeypatch, db_session_factory):
@@ -91,6 +116,40 @@ def test_worker_failure_sets_material_failed(tmp_path, monkeypatch, db_session_f
     material_id = _seed_material(db_session_factory, str(missing_file))
 
     with pytest.raises(Exception):
+        material_worker.process_material(material_id)
+
+    db = db_session_factory()
+    material = db.query(Material).filter(Material.id == material_id).first()
+    db.close()
+
+    assert material is not None
+    assert material.status == "failed"
+
+
+def test_worker_qdrant_failure_sets_material_failed(
+    tmp_path, monkeypatch, db_session_factory
+):
+    source = tmp_path / "lesson.txt"
+    source.write_text("A" * 900, encoding="utf-8")
+    monkeypatch.setenv("PROCESSED_DIR", str(tmp_path / "processed"))
+    monkeypatch.setattr(material_worker, "SessionLocal", db_session_factory)
+    monkeypatch.setattr(
+        material_worker,
+        "embed_texts",
+        lambda texts: [[0.1, 0.2, 0.3] for _ in texts],
+    )
+
+    class FailingVectorStore:
+        def ensure_collections(self):
+            pass
+
+        def upsert_material_chunks(self, chunks, vectors):
+            raise RuntimeError("qdrant unavailable")
+
+    monkeypatch.setattr(material_worker, "get_vector_store", lambda: FailingVectorStore())
+    material_id = _seed_material(db_session_factory, str(source))
+
+    with pytest.raises(RuntimeError, match="qdrant unavailable"):
         material_worker.process_material(material_id)
 
     db = db_session_factory()

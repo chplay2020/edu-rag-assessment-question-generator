@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
+from app.ai.embedding.embedder import embed_texts
 from app.ai.chunking.chunker import chunk_text
 from app.ai.extraction.pdf_extractor import extract_and_save_raw_text
 from app.ai.extraction.text_cleaner import clean_and_save_text
+from app.ai.vector_store.qdrant_store import MaterialChunkVector, get_vector_store
 from app.core.database import SessionLocal
 from app.models.material import Chunk, Job, Material
 
@@ -39,6 +41,51 @@ def _set_job_status(db: Session, job: Job | None, status: str) -> None:
     db.add(job)
 
 
+def _build_material_chunk_vectors(
+    *,
+    saved_chunks: list[Chunk],
+    material: Material,
+    source_chunks_by_index: dict[int, Any],
+) -> list[MaterialChunkVector]:
+    vectors: list[MaterialChunkVector] = []
+    for saved_chunk in saved_chunks:
+        chunk_index = cast(int, saved_chunk.chunk_index)
+        source_chunk = source_chunks_by_index.get(chunk_index)
+        parent_id = getattr(source_chunk, "parent_id", None)
+
+        vectors.append(
+            MaterialChunkVector(
+                chunk_id=cast(int, saved_chunk.id),
+                material_id=cast(int, material.id),
+                course_id=cast(int, material.course_id),
+                chunk_index=chunk_index,
+                child_index=chunk_index,
+                parent_id=parent_id,
+                chunk_type="child",
+                content=cast(str, saved_chunk.content),
+            )
+        )
+    return vectors
+
+
+def _index_material_chunks(
+    *,
+    saved_chunks: list[Chunk],
+    material: Material,
+    source_chunks_by_index: dict[int, Any],
+) -> None:
+    chunk_vectors = _build_material_chunk_vectors(
+        saved_chunks=saved_chunks,
+        material=material,
+        source_chunks_by_index=source_chunks_by_index,
+    )
+    texts = [chunk.content for chunk in chunk_vectors]
+    vectors = embed_texts(texts)
+    vector_store = get_vector_store()
+    vector_store.ensure_collections()
+    vector_store.upsert_material_chunks(chunk_vectors, vectors)
+
+
 def process_material(material_id: int) -> None:
     db: Session = SessionLocal()
     material: Material | None = None
@@ -70,6 +117,7 @@ def process_material(material_id: int) -> None:
         )
         cleaned_text, _clean_path = clean_and_save_text(material_id, raw_text)
         chunks = chunk_text(cleaned_text)
+        source_chunks_by_index = {chunk.chunk_index: chunk for chunk in chunks}
 
         db.query(Chunk).filter(Chunk.material_id == material_id).delete(
             synchronize_session=False
@@ -82,6 +130,19 @@ def process_material(material_id: int) -> None:
                     chunk_index=chunk.chunk_index,
                 )
             )
+        db.commit()
+
+        saved_chunks = (
+            db.query(Chunk)
+            .filter(Chunk.material_id == material_id)
+            .order_by(Chunk.chunk_index.asc())
+            .all()
+        )
+        _index_material_chunks(
+            saved_chunks=saved_chunks,
+            material=material,
+            source_chunks_by_index=source_chunks_by_index,
+        )
 
         material.status = "processed"
         _set_job_status(db, job, "done")
