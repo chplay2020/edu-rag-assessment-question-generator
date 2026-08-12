@@ -1,53 +1,202 @@
-from fastapi import APIRouter
-from typing import List, Any
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Any, cast
+from sqlalchemy.orm import Session
+from app.api.deps import get_db, get_current_user_id, get_current_user_role, get_current_active_lecturer
+from app.models.material import Material
+from app.models.question import Question, Option, Review
 from app.schemas.question_schema import QuestionCreate, QuestionUpdate, QuestionResponse, ReviewCreate, ReviewResponse
-from datetime import datetime
+from app.services import course_service
 
 router = APIRouter()
 
-@router.get("/material/{material_id}", response_model=List[QuestionResponse])
-def get_questions_by_material(material_id: int) -> Any:
-    """Lấy danh sách câu hỏi theo tài liệu"""
-    return [
-        QuestionResponse(
-            id=1, material_id=material_id, course_id=1,
-            content="What is Python?", difficulty_level=1,
-            blooms_taxonomy="remember", status="pending",
-            created_at=datetime.now(), updated_at=datetime.now(),
-            options=[
-                {"id": 1, "question_id": 1, "content": "A snake", "is_correct": False},
-                {"id": 2, "question_id": 1, "content": "A programming language", "is_correct": True}
-            ]
+QUESTION_STATUSES = {"draft", "review_required", "approved", "rejected"}
+CREATE_STATUSES = {"draft", "review_required"}
+REVIEW_STATUSES = {"approved", "rejected"}
+
+
+def _get_material_with_access(
+    db: Session,
+    material_id: int,
+    current_user_id: int,
+    current_user_role: str,
+) -> Material:
+    material = db.query(Material).filter(Material.id == material_id).first()
+    if not material:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại."
         )
-    ]
 
-@router.post("/", response_model=QuestionResponse)
-def create_question(data: QuestionCreate) -> Any:
+    course = course_service.get_course(
+        db=db,
+        course_id=cast(int, material.course_id),
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập."
+        )
+    return material
+
+
+def _get_question_with_access(
+    db: Session,
+    question_id: int,
+    current_user_id: int,
+    current_user_role: str,
+) -> Question:
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Câu hỏi không tồn tại."
+        )
+
+    course = course_service.get_course(
+        db=db,
+        course_id=cast(int, question.course_id),
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Câu hỏi không tồn tại hoặc bạn không có quyền truy cập."
+        )
+    return question
+
+
+@router.get("/material/{material_id}", response_model=List[QuestionResponse], dependencies=[Depends(get_current_active_lecturer)])
+def get_questions_by_material(
+    material_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
+    """Lấy danh sách câu hỏi theo tài liệu"""
+    _get_material_with_access(
+        db=db,
+        material_id=material_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+    return (
+        db.query(Question)
+        .filter(Question.material_id == material_id)
+        .order_by(Question.created_at.desc())
+        .all()
+    )
+
+@router.post("/", response_model=QuestionResponse, dependencies=[Depends(get_current_active_lecturer)])
+def create_question(
+    data: QuestionCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
     """Thêm câu hỏi thủ công"""
-    return QuestionResponse(
-        id=2, material_id=data.material_id, course_id=data.course_id,
-        content=data.content, difficulty_level=data.difficulty_level,
-        blooms_taxonomy=data.blooms_taxonomy, status="approved",
-        created_at=datetime.now(), updated_at=datetime.now(),
-        options=[{"id": 3, "question_id": 2, "content": opt.content, "is_correct": opt.is_correct} for opt in data.options]
+    material = _get_material_with_access(
+        db=db,
+        material_id=data.material_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
     )
+    if cast(int, material.course_id) != data.course_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Material không thuộc khóa học đã chọn."
+        )
+    if data.status not in CREATE_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Câu hỏi mới chỉ được tạo ở trạng thái draft hoặc review_required."
+        )
 
-@router.put("/{question_id}", response_model=QuestionResponse)
-def update_question(question_id: int, data: QuestionUpdate) -> Any:
+    question = Question(
+        material_id=data.material_id,
+        course_id=data.course_id,
+        content=data.content,
+        difficulty=data.difficulty,
+        bloom_level=data.bloom_level,
+        question_type=data.question_type,
+        explanation=data.explanation,
+        source_chunk_ids=data.source_chunk_ids,
+        status=data.status,
+    )
+    setattr(
+        question,
+        "options",
+        [
+            Option(content=option.content, is_correct=option.is_correct)
+            for option in data.options
+        ],
+    )
+    db.add(question)
+    db.commit()
+    db.refresh(question)
+    return question
+
+@router.put("/{question_id}", response_model=QuestionResponse, dependencies=[Depends(get_current_active_lecturer)])
+def update_question(
+    question_id: int,
+    data: QuestionUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
     """Sửa đổi câu hỏi"""
-    return QuestionResponse(
-        id=question_id, material_id=1, course_id=1,
-        content=data.content or "Updated content", difficulty_level=data.difficulty_level or 1,
-        blooms_taxonomy=data.blooms_taxonomy, status=data.status or "pending",
-        created_at=datetime.now(), updated_at=datetime.now(),
-        options=[]
+    question = _get_question_with_access(
+        db=db,
+        question_id=question_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
     )
+    update_data = data.model_dump(exclude_unset=True)
+    if "status" in update_data and update_data["status"] not in QUESTION_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Trạng thái câu hỏi không hợp lệ."
+        )
+    for field, value in update_data.items():
+        setattr(question, field, value)
 
-@router.post("/{question_id}/review", response_model=ReviewResponse)
-def review_question(question_id: int, data: ReviewCreate) -> Any:
+    db.add(question)
+    db.commit()
+    db.refresh(question)
+    return question
+
+@router.post("/{question_id}/review", response_model=ReviewResponse, dependencies=[Depends(get_current_active_lecturer)])
+def review_question(
+    question_id: int,
+    data: ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
     """Giảng viên đánh giá (Duyệt/Bỏ) câu hỏi"""
-    return ReviewResponse(
-        id=1, question_id=question_id, reviewer_id=1,
-        action=data.action, comments=data.comments,
-        created_at=datetime.now()
+    question = _get_question_with_access(
+        db=db,
+        question_id=question_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
     )
+    if data.status not in REVIEW_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Review chỉ hỗ trợ approved hoặc rejected."
+        )
+
+    review = Review(
+        question_id=question_id,
+        reviewed_by=current_user_id,
+        status=data.status,
+        feedback=data.feedback,
+    )
+    setattr(question, "status", data.status)
+    db.add(review)
+    db.add(question)
+    db.commit()
+    db.refresh(review)
+    return review

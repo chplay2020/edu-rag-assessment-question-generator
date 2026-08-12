@@ -26,12 +26,10 @@ class MaterialDetailResponse(MaterialResponse):
 class JobResponse(BaseModel):
     id: int
     material_id: int
-    job_type: str
+    task_type: str
     status: str
-    progress: int
-    error_message: Optional[str] = None
     created_at: datetime
-    updated_at: datetime
+    finished_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

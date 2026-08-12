@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, JSON, func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 
@@ -13,7 +13,8 @@ class Question(Base):
     bloom_level = Column(String) 
     question_type = Column(String, default="multiple_choice") 
     explanation = Column(Text)
-    status = Column(String, default="pending") # pending, approved, rejected
+    source_chunk_ids = Column(JSON, nullable=True)
+    status = Column(String, default="draft") # draft, review_required, approved, rejected
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

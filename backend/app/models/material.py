@@ -16,7 +16,7 @@ class Material(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
-    status = Column(String, default="processing") # processing, done, failed
+    status = Column(String, default="uploaded") # uploaded, processing, processed, failed
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -53,8 +53,8 @@ class Job(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     material_id = Column(Integer, ForeignKey("materials.id", ondelete="CASCADE"), nullable=False)
-    task_type = Column(String, nullable=False) # extract, generate
-    status = Column(String, default="pending") # pending, running, success, failed
+    task_type = Column(String, nullable=False) # process_material, generate_questions
+    status = Column(String, default="pending") # pending, running, done, failed
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
