@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -17,7 +19,7 @@ from app.services import course_service
 router = APIRouter()
 
 # Mô tả phản hồi lỗi 404 trong tài liệu OpenAPI/Swagger.
-not_found_response = {
+not_found_response: dict[str, Any] = {
     "description": "Course not found",
     "content": {
         "application/json": {
@@ -29,7 +31,7 @@ not_found_response = {
 }
 
 # Mô tả phản hồi lỗi 403 trong tài liệu OpenAPI/Swagger.
-forbidden_response = {
+forbidden_response: dict[str, Any] = {
     "description": "Forbidden",
     "content": {
         "application/json": {
@@ -55,7 +57,7 @@ def create_course(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
     current_user_role: str = Depends(get_current_user_role),
-) -> CourseResponse:
+) -> Any:
     """Tạo một khóa học mới."""
 
     return course_service.create_course(
@@ -80,7 +82,7 @@ def list_courses(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     created_by: int | None = None,
-) -> list[CourseResponse]:
+) -> Any:
     """Lấy danh sách khóa học chưa bị xóa mềm."""
 
     return course_service.list_courses(
@@ -106,7 +108,7 @@ def get_course(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
     current_user_role: str = Depends(get_current_user_role),
-) -> CourseResponse:
+) -> Any:
     """Lấy thông tin chi tiết của một khóa học."""
 
     course = course_service.get_course(
@@ -139,7 +141,7 @@ def update_course(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
     current_user_role: str = Depends(get_current_user_role),
-) -> CourseResponse:
+) -> Any:
     """Cập nhật thông tin khóa học."""
 
     course = course_service.get_course(
@@ -176,7 +178,7 @@ def delete_course(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
     current_user_role: str = Depends(get_current_user_role),
-) -> CourseResponse:
+) -> Any:
     """Xóa mềm một khóa học."""
 
     course = course_service.get_course(

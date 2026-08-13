@@ -1,0 +1,9 @@
+Classify the difficulty level of the question.
+
+Return only JSON:
+{"difficulty": "easy|medium|hard"}
+
+Use:
+- easy: direct recall from one sentence
+- medium: explanation or applying one concept
+- hard: multi-step reasoning, analysis, evaluation, or creation

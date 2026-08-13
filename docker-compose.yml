@@ -16,6 +16,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Vector Database Service (Qdrant)
+  qdrant:
+    image: qdrant/qdrant:v1.10.1
+    container_name: edu_rag_qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
   # Backend Service (FastAPI)
   backend:
     build: 
@@ -28,14 +39,25 @@ services:
     environment:
       # URL trỏ tới service db nội bộ trong Docker network
       - POSTGRES_SERVER=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=edu_rag_db
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-edu_rag_db}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+      - QDRANT_MATERIAL_COLLECTION=${QDRANT_MATERIAL_COLLECTION:-material_chunks}
+      - QDRANT_QUESTION_COLLECTION=${QDRANT_QUESTION_COLLECTION:-question_vectors}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-fake}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-fake-deterministic-embedding}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_MODEL=${LLM_MODEL:-gemini-2.5-flash}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     volumes:
       # Mount code trực tiếp vào container để hỗ trợ live-reload
       - ./backend:/app
     depends_on:
       - db
+      - qdrant
 
   # Frontend Service (React/Vite)
   frontend:
@@ -58,3 +80,4 @@ services:
 
 volumes:
   postgres_data:
+  qdrant_data:

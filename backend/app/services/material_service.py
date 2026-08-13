@@ -14,9 +14,8 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_MIME_TYPES = [
     "application/pdf",
     "text/plain",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]
-ALLOWED_EXTENSIONS = ["pdf", "txt", "docx"]
+ALLOWED_EXTENSIONS = ["pdf", "txt"]
 
 def ensure_upload_dir_exists():
     if not os.path.exists(UPLOAD_DIR):
@@ -48,7 +47,7 @@ def upload_material(
     if file.content_type not in ALLOWED_MIME_TYPES and ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Chỉ hỗ trợ upload định dạng PDF, TXT hoặc DOCX."
+            detail="Chỉ hỗ trợ upload định dạng PDF hoặc TXT."
         )
 
     # Lấy kích thước file thực tế bằng cách di chuyển con trỏ đọc
@@ -85,7 +84,7 @@ def upload_material(
         file_path=file_path,
         course_id=course_id,
         uploaded_by=current_user_id,
-        status="processing"
+        status="uploaded"
     )
     db.add(db_obj)
 

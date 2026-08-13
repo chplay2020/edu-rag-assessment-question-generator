@@ -17,6 +17,22 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_DB: str = "edu_rag_db"
+
+    # Vector store
+    QDRANT_URL: str = "http://localhost:6333" 
+    QDRANT_API_KEY: str | None = None
+    QDRANT_MATERIAL_COLLECTION: str = "material_chunks"
+    QDRANT_QUESTION_COLLECTION: str = "question_vectors"
+
+    # Embeddings
+    EMBEDDING_PROVIDER: str = "fake"
+    EMBEDDING_MODEL: str = "fake-deterministic-embedding"
+    EMBEDDING_DIMENSION: int = 768
+
+    # LLM
+    LLM_PROVIDER: str = "gemini"
+    LLM_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_KEY: str | None = None
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
