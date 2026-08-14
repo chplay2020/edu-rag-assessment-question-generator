@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, List, cast
 import fitz  # PyMuPDF  # type: ignore
 from app.models.material import Material
+from app.core.storage import get_processed_dir
 
 class TextExtractionError(Exception):
     pass
@@ -67,12 +68,11 @@ def extract_text(file_path: str | Path) -> str:
 
 # hàm lưu raw text vào file
 def save_raw_text(material_id: int, text: str) -> str:
-    processed_dir = os.environ.get("PROCESSED_DIR", "storage/processed")
-    target_dir = os.path.join(processed_dir, f"material_{material_id}")
-    os.makedirs(target_dir, exist_ok=True)
+    target_dir = get_processed_dir() / f"material_{material_id}"
+    target_dir.mkdir(parents=True, exist_ok=True)
     
-    target_path = os.path.join(target_dir, "raw.txt")
-    temp_path = target_path + ".tmp"
+    target_path = target_dir / "raw.txt"
+    temp_path = target_path.with_suffix(".txt.tmp")
     
     with open(temp_path, "w", encoding="utf-8") as f:
         f.write(text)
@@ -80,7 +80,7 @@ def save_raw_text(material_id: int, text: str) -> str:
     os.replace(temp_path, target_path)
     
     # Trả về đường dẫn dạng chuỗi với /
-    return target_path.replace("\\", "/")
+    return target_path.as_posix()
 
 # hàm kết hợp trích xuất và lưu raw text
 def extract_and_save(material: Material) -> str:

@@ -18,3 +18,6 @@ backend/storage/test-files/*
 !backend/storage/test-files/.gitkeep
 backend/storage/processed/*
 !backend/storage/processed/.gitkeep
+
+storage/processed/*
+!storage/processed/.gitkeep

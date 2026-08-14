@@ -49,6 +49,7 @@ services:
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-fake}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-fake-deterministic-embedding}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+      - PROCESSED_DIR=${PROCESSED_DIR:-storage/processed}
       - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
       - LLM_MODEL=${LLM_MODEL:-gemini-2.5-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}

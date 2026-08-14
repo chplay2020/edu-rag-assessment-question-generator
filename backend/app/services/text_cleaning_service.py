@@ -1,6 +1,7 @@
-import os
 import re
 from typing import List, Dict
+
+from app.core.storage import get_processed_dir
 
 def clean_text(raw_text: str) -> str:
 
@@ -104,16 +105,15 @@ def clean_text(raw_text: str) -> str:
 def clean_and_save(material_id: int, raw_text: str) -> str:
     cleaned_text = clean_text(raw_text)
     
-    processed_dir = os.environ.get("PROCESSED_DIR", "storage/processed")
-    target_dir = os.path.join(processed_dir, f"material_{material_id}")
-    os.makedirs(target_dir, exist_ok=True)
+    target_dir = get_processed_dir() / f"material_{material_id}"
+    target_dir.mkdir(parents=True, exist_ok=True)
     
-    target_path = os.path.join(target_dir, "clean.txt")
-    temp_path = target_path + ".tmp"
+    target_path = target_dir / "clean.txt"
+    temp_path = target_path.with_suffix(".txt.tmp")
     
     with open(temp_path, "w", encoding="utf-8") as f:
         f.write(cleaned_text)
         
-    os.replace(temp_path, target_path)
+    temp_path.replace(target_path)
     
-    return target_path.replace("\\", "/")
+    return target_path.as_posix()

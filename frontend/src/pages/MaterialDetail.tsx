@@ -32,6 +32,7 @@ import {
   type MockProcessingState,
   type MockProcessOptions,
 } from '../mocks/materialProcessingMock';
+import { getMaterialStatusMeta } from '../utils/materialStatus';
 import './MaterialDetail.css';
 
 // File Icon
@@ -44,26 +45,14 @@ function FileIcon({ filename, size = 20 }: { filename: string; size?: number }) 
   return <File size={size} weight="duotone" />;
 }
 
-// Status Badge
-
+// Hiển thị trạng thái Material bằng tiếng Việt, dùng helper dùng chung
 function StatusBadge({ status }: { status: string }) {
-  const labelMap: Record<string, string> = {
-    processing: 'Đang xử lý',
-    ready: 'Sẵn sàng',
-    error: 'Xử lý thất bại',
-    pending: 'Chờ xử lý',
-    done: 'Đã xử lý',
-    completed: 'Đã xử lý',
-    failed: 'Xử lý thất bại',
-  };
-  const label = labelMap[status] ?? 'Chưa xác định';
-
-  let badgeClass = 'md-status-unknown';
-  if (status === 'processing' || status === 'pending') badgeClass = 'md-status-processing';
-  else if (status === 'ready' || status === 'done' || status === 'completed') badgeClass = 'md-status-ready';
-  else if (status === 'error' || status === 'failed') badgeClass = 'md-status-error';
-
-  return <span className={`md-status-badge ${badgeClass}`}>{label}</span>;
+  const { label, modifier } = getMaterialStatusMeta(status);
+  return (
+    <span className={`md-status-badge md-status-${modifier}`}>
+      {label}
+    </span>
+  );
 }
 
 // Toast type
