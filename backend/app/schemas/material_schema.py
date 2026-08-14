@@ -34,3 +34,9 @@ class JobResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MaterialChunkResponse(BaseModel):
+    chunk_id: int
+    content: str
+    chunk_index: Optional[int] = None

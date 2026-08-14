@@ -1,6 +1,6 @@
 from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -10,7 +10,7 @@ from app.api.deps import (
     get_db,
 )
 from app.models.material import Job, Material
-from app.schemas.material_schema import MaterialDetailResponse, MaterialResponse
+from app.schemas.material_schema import MaterialDetailResponse, MaterialResponse, MaterialChunkResponse
 from app.services import course_service, material_service
 from app.workers.material_worker import process_material
 
@@ -132,6 +132,26 @@ def get_material_detail(
     return material_service.get_material_detail(
         db=db,
         material_id=material_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+@router.get(
+    "/{material_id}/chunks",
+    response_model=list[MaterialChunkResponse],
+    dependencies=[Depends(get_current_active_lecturer)],
+)
+def get_material_chunks(
+    material_id: int,
+    ids: Annotated[list[int], Query(...)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    current_user_role: Annotated[str, Depends(get_current_user_role)],
+) -> Any:
+    """Lấy nội dung các chunks của tài liệu."""
+    return material_service.get_material_chunks(
+        db=db,
+        material_id=material_id,
+        chunk_ids=ids,
         current_user_id=current_user_id,
         current_user_role=current_user_role,
     )
