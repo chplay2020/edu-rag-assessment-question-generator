@@ -8,6 +8,7 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     material_id = Column(Integer, ForeignKey("materials.id", ondelete="CASCADE"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True)
     content = Column(Text, nullable=False)
     difficulty = Column(String, default="medium") # easy, medium, hard
     bloom_level = Column(String) 
@@ -20,6 +21,7 @@ class Question(Base):
     # Relationships
     material = relationship("Material", back_populates="questions")
     course = relationship("Course", back_populates="questions")
+    job = relationship("Job", back_populates="questions")
     options = relationship("Option", back_populates="question", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="question", cascade="all, delete-orphan")
 

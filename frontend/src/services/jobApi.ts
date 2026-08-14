@@ -1,0 +1,68 @@
+import { apiClient } from './courseApi';
+import type { MaterialDetail } from './materialApi';
+
+// Types cho Job và Questions
+export interface JobConfig {
+  query?: string;
+  number_of_questions: number;
+  difficulty: string;
+  bloom_level?: string;
+  language: string;
+  top_k: number;
+}
+
+export interface JobResponse {
+  id: number;
+  material_id: number;
+  task_type: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  created_at: string;
+  finished_at?: string;
+  error_message?: string;
+  config?: JobConfig;
+  material?: MaterialDetail;
+}
+
+export interface Option {
+  id: number;
+  content: string;
+  is_correct: boolean;
+}
+
+export interface QuestionResponse {
+  id: number;
+  job_id: number;
+  content: string;
+  difficulty: string;
+  bloom_level: string;
+  question_type: string;
+  explanation: string;
+  options: Option[];
+  source_chunk_ids: number[];
+  status: string;
+  created_at: string;
+}
+
+/**
+ * Gọi API tạo Job sinh câu hỏi
+ */
+export async function createQuestionGenerationJob(materialId: number, config: JobConfig): Promise<JobResponse> {
+  const res = await apiClient.post<JobResponse>(`/jobs/material/${materialId}/generate-questions`, config);
+  return res.data;
+}
+
+/**
+ * Lấy trạng thái của một Job
+ */
+export async function getJobStatus(jobId: number): Promise<JobResponse> {
+  const res = await apiClient.get<JobResponse>(`/jobs/${jobId}`);
+  return res.data;
+}
+
+/**
+ * Lấy danh sách câu hỏi đã được sinh ra từ Job
+ */
+export async function getJobQuestions(jobId: number): Promise<QuestionResponse[]> {
+  const res = await apiClient.get<QuestionResponse[]>(`/jobs/${jobId}/questions`);
+  return res.data;
+}

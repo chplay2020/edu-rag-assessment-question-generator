@@ -10,8 +10,10 @@ import {
   WarningCircle,
   ArrowLeft,
   Gear,
-  CaretRight
+  CaretRight,
+  Sparkle
 } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
   getMaterialById,
@@ -53,6 +55,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export const MaterialDetail: React.FC = () => {
   const { courseId, materialId } = useParams<{ courseId: string; materialId: string }>();
+  const navigate = useNavigate();
 
   const cId = Number(courseId);
   const mId = Number(materialId);
@@ -209,17 +212,27 @@ export const MaterialDetail: React.FC = () => {
               {isDownloading ? <CircleNotch size={18} className="cm-spin" /> : <DownloadSimple size={18} />}
               <span>Tải xuống</span>
             </button>
-            <div className="md-tooltip-wrapper" title="Chức năng xử lý sẽ khả dụng sau khi Process API hoàn thành.">
+            {material.status === 'processed' || material.status === 'ready' || material.status === 'done' || material.status === 'completed' ? (
               <button
                 className="md-btn-process"
-                disabled
-                aria-disabled="true"
+                onClick={() => navigate(`/courses/${cId}/materials/${mId}/generate`)}
+                title="Tạo câu hỏi từ tài liệu này"
               >
-                <Gear size={18} />
-                <span>Xử lý tài liệu</span>
+                <Sparkle size={18} />
+                <span>Tạo câu hỏi</span>
               </button>
-
-            </div>
+            ) : (
+              <div className="md-tooltip-wrapper" title="Chức năng xử lý sẽ khả dụng sau khi tài liệu sẵn sàng.">
+                <button
+                  className="md-btn-process"
+                  disabled
+                  aria-disabled="true"
+                >
+                  <Gear size={18} />
+                  <span>Xử lý tài liệu</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         {downloadError && (

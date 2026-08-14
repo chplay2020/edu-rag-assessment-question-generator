@@ -40,6 +40,7 @@ class QuestionResponse(QuestionBase):
     id: int
     material_id: int
     course_id: int
+    job_id: Optional[int] = None
     status: str
     created_at: datetime
     options: List[OptionResponse] = Field(default_factory=list)

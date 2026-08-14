@@ -28,6 +28,7 @@ class JobResponse(BaseModel):
     material_id: int
     task_type: str
     status: str
+    config: Optional[dict] = None
     created_at: datetime
     finished_at: Optional[datetime] = None
 
