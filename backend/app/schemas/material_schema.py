@@ -34,3 +34,12 @@ class JobResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MaterialProcessResponse(BaseModel):
+    """Response trả về sau khi yêu cầu xử lý tài liệu thành công."""
+    material_id: int
+    material_status: str
+    job_id: int
+    job_status: str
+    task_type: str

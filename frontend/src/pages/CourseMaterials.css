@@ -412,7 +412,7 @@
 
 .cm-btn-primary:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
-  }
+}
 
 .cm-btn-primary:active:not(:disabled) {
   box-shadow: none;
@@ -596,17 +596,33 @@
   flex-shrink: 0;
 }
 
+/* uploaded */
+.cm-status-uploaded::before {
+  background-color: #60a5fa;
+}
+
+/* processing / pending */
 .cm-status-processing::before,
 .cm-status-pending::before {
   background-color: #f59e0b;
 }
 
-.cm-status-ready::before {
+/* processed / done / ready */
+.cm-status-processed::before,
+.cm-status-ready::before,
+.cm-status-done::before {
   background-color: #10b981;
 }
 
+/* failed / error */
+.cm-status-failed::before,
 .cm-status-error::before {
   background-color: #ef4444;
+}
+
+/* unknown */
+.cm-status-unknown::before {
+  background-color: #9ca3af;
 }
 
 /* Download button */
@@ -632,7 +648,7 @@
   border-color: var(--color-primary);
 }
 
-/* Download button — processing/pending state (non-interactive) */
+/* Download button */
 .cm-btn-download-processing {
   cursor: default;
   color: var(--color-text-muted);
@@ -717,6 +733,7 @@
     padding: 6px 9px;
   }
 }
+
 .cm-icon-btn-detail {
   display: inline-flex;
   align-items: center;
@@ -729,6 +746,7 @@
   margin-left: 8px;
   padding: 4px;
 }
+
 .cm-icon-btn-detail:hover,
 .cm-icon-btn-detail:focus-visible {
   color: var(--color-text-main);

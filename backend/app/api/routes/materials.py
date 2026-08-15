@@ -10,7 +10,11 @@ from app.api.deps import (
     get_db,
 )
 from app.models.material import Job, Material
-from app.schemas.material_schema import MaterialDetailResponse, MaterialResponse
+from app.schemas.material_schema import (
+    MaterialDetailResponse,
+    MaterialProcessResponse,
+    MaterialResponse,
+)
 from app.services import course_service, material_service
 from app.workers.material_worker import process_material
 
@@ -61,6 +65,8 @@ def get_materials_by_course(
 
 @router.post(
     "/{material_id}/process",
+    response_model=MaterialProcessResponse,
+    status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(get_current_active_lecturer)],
 )
 def enqueue_material_processing(
@@ -69,52 +75,93 @@ def enqueue_material_processing(
     db: Annotated[Session, Depends(get_db)],
     current_user_id: Annotated[int, Depends(get_current_user_id)],
     current_user_role: Annotated[str, Depends(get_current_user_role)],
-) -> dict[str, Any]:
-    """Tạo job xử lý material và chạy nền."""
-    material = db.query(Material).filter(Material.id == material_id).first()
-    if not material:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tài liệu không tồn tại.",
+) -> MaterialProcessResponse:
+    "Tạo job xử lý material và chạy nền."
+    try:
+        material = (
+            db.query(Material)
+            .filter(Material.id == material_id)
+            .with_for_update()
+            .first()
         )
+        if not material:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tài liệu không tồn tại.",
+            )
 
-    course = course_service.get_course(
-        db=db,
-        course_id=cast(int, material.course_id),
-        current_user_id=current_user_id,
-        current_user_role=current_user_role,
-    )
-    if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập.",
+        course = course_service.get_course(
+            db=db,
+            course_id=cast(int, material.course_id),
+            current_user_id=current_user_id,
+            current_user_role=current_user_role,
         )
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập.",
+            )
 
-    material_status = cast(str, material.status)
-    if material_status not in {"uploaded", "failed"}:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Chỉ có thể xử lý tài liệu ở trạng thái uploaded hoặc failed.",
+        material_status = cast(str, material.status)
+        if material_status in {"processing", "processed"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Tài liệu đang ở trạng thái '{material_status}', "
+                    "không thể khởi tạo lại."
+                ),
+            )
+        if material_status not in {"uploaded", "failed"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Chỉ có thể xử lý tài liệu ở trạng thái uploaded hoặc failed.",
+            )
+
+        existing_job = (
+            db.query(Job)
+            .filter(
+                Job.material_id == material_id,
+                Job.task_type == "process_material",
+                Job.status.in_(["pending", "running"]),
+            )
+            .first()
         )
+        if existing_job:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Đã có job '{existing_job.status}' đang chờ xử lý "
+                    f"(job_id={existing_job.id}). Không tạo job trùng."
+                ),
+            )
 
-    job = Job(
-        material_id=material_id,
-        task_type="process_material",
-        status="pending",
-    )
-    db.add(job)
-    db.commit()
-    db.refresh(job)
+        job = Job(
+            material_id=material_id,
+            task_type="process_material",
+            status="pending",
+        )
+        material.status = "processing"
+        db.add_all([job, material])
+        db.flush()
 
+        response = MaterialProcessResponse(
+            material_id=material_id,
+            material_status="processing",
+            job_id=cast(int, job.id),
+            job_status="pending",
+            task_type="process_material",
+        )
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+    # The background task is registered only after the transaction is durable.
     background_tasks.add_task(process_material, material_id)
-
-    return {
-        "material_id": material_id,
-        "material_status": material_status,
-        "job_id": cast(int, job.id),
-        "job_status": cast(str, job.status),
-        "task_type": cast(str, job.task_type),
-    }
+    return response
 
 
 @router.get(

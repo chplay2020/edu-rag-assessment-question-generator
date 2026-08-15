@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Edu RAG API - Auth & Courses",
-    "description": "Postman Collection for testing Happy & Error cases of Auth and Course modules.",
+    "name": "Edu RAG API - Auth, Courses & Materials",
+    "description": "Postman Collection cho Auth, Course, Material modules. Bao gồm Process Material và Get Job Status.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -17,6 +17,16 @@
     },
     {
       "key": "material_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "course_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "job_id",
       "value": "",
       "type": "string"
     }
@@ -409,7 +419,20 @@
                 "upload"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 201', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('material_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Materials By Course",
@@ -455,6 +478,176 @@
               ]
             }
           }
+        },
+        {
+          "name": "Process Material (T028)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/materials/{{material_id}}/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "materials",
+                "{{material_id}}",
+                "process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 202 Accepted', function () { pm.response.to.have.status(202); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Response has required fields', function () {",
+                  "  pm.expect(jsonData).to.have.property('material_id');",
+                  "  pm.expect(jsonData).to.have.property('material_status');",
+                  "  pm.expect(jsonData).to.have.property('job_id');",
+                  "  pm.expect(jsonData).to.have.property('job_status');",
+                  "  pm.expect(jsonData).to.have.property('task_type');",
+                  "});",
+                  "pm.test('material_status is processing', function () {",
+                  "  pm.expect(jsonData.material_status).to.equal('processing');",
+                  "});",
+                  "pm.test('job_status is pending', function () {",
+                  "  pm.expect(jsonData.job_status).to.equal('pending');",
+                  "});",
+                  "pm.test('task_type is process_material', function () {",
+                  "  pm.expect(jsonData.task_type).to.equal('process_material');",
+                  "});",
+                  "if (jsonData.job_id) {",
+                  "  pm.collectionVariables.set('job_id', jsonData.job_id);",
+                  "  console.log('Saved job_id:', jsonData.job_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Process Material - Already Processing (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/materials/{{material_id}}/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "materials",
+                "{{material_id}}",
+                "process"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409 Conflict (material already processing or job exists)', function () {",
+                  "  pm.expect(pm.response.code).to.equal(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Jobs (T028)",
+      "item": [
+        {
+          "name": "Get Job Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "jobs",
+                "{{job_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Response has required fields', function () {",
+                  "  pm.expect(jsonData).to.have.property('id');",
+                  "  pm.expect(jsonData).to.have.property('material_id');",
+                  "  pm.expect(jsonData).to.have.property('task_type');",
+                  "  pm.expect(jsonData).to.have.property('status');",
+                  "  pm.expect(jsonData).to.have.property('created_at');",
+                  "});",
+                  "pm.test('task_type is process_material', function () {",
+                  "  pm.expect(jsonData.task_type).to.equal('process_material');",
+                  "});",
+                  "console.log('Job status:', jsonData.status, '| finished_at:', jsonData.finished_at);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Job Status - Not Found (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/jobs/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "jobs",
+                "99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

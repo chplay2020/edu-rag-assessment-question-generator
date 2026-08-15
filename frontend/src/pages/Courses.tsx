@@ -454,12 +454,15 @@ export const Courses: React.FC = () => {
                     onClick={() => navigate(`/courses/${course.id}`)}
                   >
                     <div className="table-code-cell">
-                      <span className="table-code-badge">
+                      <span
+                        className="table-code-badge"
+                        title={course.code}
+                      >
                         {course.code}
                       </span>
                     </div>
                     <div>
-                      <div className="table-title">
+                      <div className="table-title" title={course.title}>
                         {course.title}
                       </div>
                     </div>

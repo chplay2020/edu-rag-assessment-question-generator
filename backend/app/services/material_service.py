@@ -4,7 +4,7 @@ import shutil
 from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models.material import Material, Chunk
+from app.models.material import Job, Material, Chunk
 from app.schemas.material_schema import MaterialResponse
 from app.services import course_service
 
@@ -16,6 +16,54 @@ ALLOWED_MIME_TYPES = [
     "text/plain",
 ]
 ALLOWED_EXTENSIONS = ["pdf", "txt"]
+
+
+def recover_orphaned_processing_materials(
+    db: Session,
+    material_ids: list[int],
+) -> set[int]:
+
+    if not material_ids:
+        return set()
+
+    # Tìm các material đang ở processing trong danh sách quan tâm
+    candidates = (
+        db.query(Material)
+        .filter(
+            Material.id.in_(material_ids),
+            Material.status == "processing",
+        )
+        .all()
+    )
+    if not candidates:
+        return set()
+
+    candidate_ids = [m.id for m in candidates]
+
+    # Lấy tập id có Job active (pending/running)
+    active_job_material_ids: set[int] = {
+        row[0]
+        for row in db.query(Job.material_id)
+        .filter(
+            Job.material_id.in_(candidate_ids),
+            Job.task_type == "process_material",
+            Job.status.in_(["pending", "running"]),
+        )
+        .all()
+    }
+
+    # Reset những material không có Job active
+    orphaned_ids: set[int] = set()
+    for mat in candidates:
+        if mat.id not in active_job_material_ids:
+            mat.status = "uploaded"
+            db.add(mat)
+            orphaned_ids.add(mat.id)
+
+    if orphaned_ids:
+        db.commit()
+
+    return orphaned_ids
 
 def ensure_upload_dir_exists():
     if not os.path.exists(UPLOAD_DIR):
@@ -123,7 +171,25 @@ def get_materials_by_course(
             detail="Khóa học không tồn tại hoặc bạn không có quyền truy cập."
         )
 
-    return db.query(Material).filter(Material.course_id == course_id).order_by(Material.created_at.desc()).all()
+    materials = (
+        db.query(Material)
+        .filter(Material.course_id == course_id)
+        .order_by(Material.created_at.desc())
+        .all()
+    )
+
+    # Phục hồi tài liệu cũ bị kẹt trạng thái 'processing'
+    recover_orphaned_processing_materials(db, material_ids=[m.id for m in materials])
+
+    # Expire để đọc lại status sau khi recover có thể đã commit
+    db.expire_all()
+    materials = (
+        db.query(Material)
+        .filter(Material.course_id == course_id)
+        .order_by(Material.created_at.desc())
+        .all()
+    )
+    return materials
 
 def get_material_detail(
     db: Session,
@@ -137,6 +203,10 @@ def get_material_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tài liệu không tồn tại."
         )
+
+    # Phục hồi nếu tài liệu bị kẹt trạng thái 'processing'
+    recover_orphaned_processing_materials(db, material_ids=[material_id])
+    db.expire(material)  # Đọc lại status sau recover
 
     # Sử dụng course_service để kiểm tra quyền truy cập của người dùng
     course = course_service.get_course(
