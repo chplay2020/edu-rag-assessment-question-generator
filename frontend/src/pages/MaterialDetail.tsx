@@ -11,10 +11,9 @@ import {
   ArrowLeft,
   Gear,
   CaretRight,
-  CheckCircle,
-  X,
-  ArrowsClockwise,
-} from '@phosphor-icons/react';
+} 
+from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
   getMaterialById,
@@ -70,6 +69,7 @@ type ProcessPhase =
 
 export const MaterialDetail: React.FC = () => {
   const { courseId, materialId } = useParams<{ courseId: string; materialId: string }>();
+  const navigate = useNavigate();
 
   const cId = Number(courseId);
   const mId = Number(materialId);
@@ -502,6 +502,26 @@ export const MaterialDetail: React.FC = () => {
                 <CheckCircle size={18} />
                 <span>Đã xử lý</span>
               </button>
+            {material.status === 'processed' || material.status === 'ready' || material.status === 'done' || material.status === 'completed' ? (
+              <button
+                className="md-btn-process"
+                onClick={() => navigate(`/courses/${cId}/materials/${mId}/generate`)}
+                title="Tạo câu hỏi từ tài liệu này"
+              >
+                <Sparkle size={18} />
+                <span>Tạo câu hỏi</span>
+              </button>
+            ) : (
+              <div className="md-tooltip-wrapper" title="Chức năng xử lý sẽ khả dụng sau khi tài liệu sẵn sàng.">
+                <button
+                  className="md-btn-process"
+                  disabled
+                  aria-disabled="true"
+                >
+                  <Gear size={18} />
+                  <span>Xử lý tài liệu</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

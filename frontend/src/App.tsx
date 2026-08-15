@@ -7,6 +7,8 @@ import { Courses } from './pages/Courses';
 import { CourseDetail } from './pages/CourseDetail';
 import { CourseMaterials } from './pages/CourseMaterials';
 import { MaterialDetail } from './pages/MaterialDetail';
+import { GenerateQuestions } from './pages/GenerateQuestions';
+import { JobResult } from './pages/JobResult';
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/materials" element={<CourseMaterials />} />
             <Route path="/courses/:courseId/materials/:materialId" element={<MaterialDetail />} />
+            <Route path="/courses/:courseId/materials/:materialId/generate" element={<GenerateQuestions />} />
+            <Route path="/courses/:courseId/materials/:materialId/jobs/:jobId" element={<JobResult />} />
           </Route>
         </Route>
 

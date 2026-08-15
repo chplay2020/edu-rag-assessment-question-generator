@@ -101,6 +101,7 @@ def process_question_generation_job(
             question = Question(
                 material_id=material_id,
                 course_id=course_id,
+                job_id=job_id,
                 content=generated_question.question_text,
                 difficulty=generated_question.difficulty,
                 bloom_level=generated_question.bloom_level,
