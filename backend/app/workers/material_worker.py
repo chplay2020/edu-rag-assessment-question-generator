@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from typing import Any, cast
 
 from sqlalchemy.orm import Session
@@ -13,14 +14,18 @@ from app.models.material import Chunk, Job, Material
 
 
 PROCESSABLE_STATUSES = {"uploaded", "failed"}
+logger = logging.getLogger(__name__)
 
 
 class MaterialProcessingError(Exception):
     pass
 
 
-def _latest_process_job(db: Session, material_id: int) -> Job | None:
-    return (
+def _latest_process_job(
+    db: Session, material_id: int, *, for_update: bool = False
+) -> Job | None:
+    """Tìm Job process_material đang ở trạng thái pending hoặc running."""
+    query = (
         db.query(Job)
         .filter(
             Job.material_id == material_id,
@@ -28,8 +33,10 @@ def _latest_process_job(db: Session, material_id: int) -> Job | None:
             Job.status.in_(["pending", "running"]),
         )
         .order_by(Job.created_at.desc(), Job.id.desc())
-        .first()
     )
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
 
 
 def _set_job_status(db: Session, job: Job | None, status: str) -> None:
@@ -93,24 +100,63 @@ def process_material(material_id: int) -> None:
     processing_started = False
 
     try:
-        material = db.query(Material).filter(Material.id == material_id).first()
+        material = (
+            db.query(Material)
+            .filter(Material.id == material_id)
+            .with_for_update()
+            .first()
+        )
         if not material:
             raise MaterialProcessingError(f"Material not found: {material_id}")
 
         current_status = cast(str, material.status)
-        if current_status not in PROCESSABLE_STATUSES:
+
+        if current_status == "processing":
+            # Material đã ở processing
+            job = _latest_process_job(db, material_id, for_update=True)
+            if not job:
+                raise MaterialProcessingError(
+                    f"Material {material_id} is 'processing' but no active job found. "
+                    "Refusing to process to avoid duplicate execution."
+                )
+            if cast(str, job.status) != "pending":
+                raise MaterialProcessingError(
+                    f"Process job {job.id} for material {material_id} is already "
+                    f"'{job.status}'. Refusing duplicate worker execution."
+                )
+            _set_job_status(db, job, "running")
+            db.commit()
+            processing_started = True
+
+        elif current_status in PROCESSABLE_STATUSES:
+            # Gọi trực tiếp (unit test cũ, retry thủ công, …)
+            job = _latest_process_job(db, material_id, for_update=True)
+            if job is not None and cast(str, job.status) == "running":
+                raise MaterialProcessingError(
+                    f"Process job {job.id} for material {material_id} is already running."
+                )
+            if not job:
+                # Tạo job mới nếu chưa có
+                job = Job(
+                    material_id=material_id,
+                    task_type="process_material",
+                    status="pending",
+                )
+                db.add(job)
+
+            material.status = "processing"
+            _set_job_status(db, job, "running")
+            db.add(material)
+            db.commit()
+            db.refresh(material)
+            processing_started = True
+
+        else:
             raise MaterialProcessingError(
                 f"Material {material_id} cannot be processed from status '{current_status}'."
             )
 
-        job = _latest_process_job(db, material_id)
-        material.status = "processing"
-        _set_job_status(db, job, "running")
-        db.add(material)
-        db.commit()
-        db.refresh(material)
-        processing_started = True
-
+        # Pipeline xử lý
         raw_text, _raw_path = extract_and_save_raw_text(
             material_id=material_id,
             file_path=cast(str, material.file_path),
@@ -130,7 +176,7 @@ def process_material(material_id: int) -> None:
                     chunk_index=chunk.chunk_index,
                 )
             )
-        db.commit()
+        db.flush()
 
         saved_chunks = (
             db.query(Chunk)
@@ -144,19 +190,26 @@ def process_material(material_id: int) -> None:
             source_chunks_by_index=source_chunks_by_index,
         )
 
+        # Thành công
         material.status = "processed"
         _set_job_status(db, job, "done")
         db.add(material)
         db.commit()
 
-    except Exception:
+    except Exception as exc:
         db.rollback()
         if material is not None and processing_started:
             material.status = "failed"
             db.add(material)
-        if processing_started:
+        if processing_started and job is not None:
             _set_job_status(db, job, "failed")
         db.commit()
+        logger.exception(
+            "Material processing failed (material_id=%s, job_id=%s): %s",
+            material_id,
+            getattr(job, "id", None),
+            exc,
+        )
         raise
     finally:
         db.close()

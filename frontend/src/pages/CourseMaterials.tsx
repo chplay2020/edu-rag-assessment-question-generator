@@ -30,6 +30,7 @@ import {
   ALLOWED_EXTENSIONS,
   MAX_FILE_SIZE_MB,
 } from '../services/materialApi';
+import { getMaterialStatusMeta } from '../utils/materialStatus';
 import './CourseMaterials.css';
 
 // Toast
@@ -52,14 +53,12 @@ function FileIcon({ filename, size = 20 }: { filename: string; size?: number }) 
 // hiển thị trạng thái
 
 function StatusBadge({ status }: { status: string }) {
-  const labelMap: Record<string, string> = {
-    processing: 'Đang xử lý',
-    ready: 'Sẵn sàng',
-    error: 'Lỗi',
-    pending: 'Đang chờ',
-  };
-  const label = labelMap[status] ?? status;
-  return <span className={`cm-status-badge cm-status-${status}`}>{label}</span>;
+  const { label, modifier } = getMaterialStatusMeta(status);
+  return (
+    <span className={`cm-status-badge cm-status-${modifier}`}>
+      {label}
+    </span>
+  );
 }
 
 // Component chính
@@ -131,13 +130,14 @@ export const CourseMaterials: React.FC = () => {
   }, [courseId, id]);
 
   useEffect(() => {
+    // Luôn fetch mới khi mount để tránh cache cũ
     fetchCourse();
     fetchMaterials();
+  }, [courseId]);
 
-  }, [fetchCourse, fetchMaterials]);
 
   useEffect(() => {
-    const hasProcessing = materials.some(m => m.status === 'processing' || m.status === 'pending');
+    const hasProcessing = materials.some(m => m.status === 'processing');
     if (!hasProcessing) return;
 
     const interval = setInterval(() => {
@@ -462,7 +462,7 @@ export const CourseMaterials: React.FC = () => {
         {!listLoading && !listError && materials.length > 0 && (
           <ul className="cm-material-list" role="list">
             {materials.map((mat) => {
-              const isProcessing = mat.status === 'processing' || mat.status === 'pending';
+              const isProcessing = mat.status === 'processing';
               return (
                 <li key={mat.id} className="cm-material-item">
                   <div className="cm-material-icon">
