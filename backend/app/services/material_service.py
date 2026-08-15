@@ -251,3 +251,47 @@ def get_material_detail(
         "chunk_count": chunk_count,
         "extracted_text_preview": extracted_text_preview,
     }
+
+def get_material_chunks(
+    db: Session,
+    material_id: int,
+    chunk_ids: list[int],
+    current_user_id: int,
+    current_user_role: str
+) -> list[dict]:
+    # Kiểm tra quyền truy cập material
+    material = db.query(Material).filter(Material.id == material_id).first()
+    if not material:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại."
+        )
+
+    course = course_service.get_course(
+        db=db,
+        course_id=material.course_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role
+    )
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tài liệu không tồn tại hoặc bạn không có quyền truy cập."
+        )
+
+    if not chunk_ids:
+        return []
+
+    # Import vector store
+    from app.ai.vector_store.qdrant_store import get_vector_store
+    
+    vector_store = get_vector_store()
+    raw_chunks = vector_store.get_material_chunks_by_ids(chunk_ids)
+
+    # Validate từng chunk để đảm bảo nó thuộc về đúng material_id
+    valid_chunks = []
+    for chunk_payload in raw_chunks:
+        if chunk_payload.get("material_id") == material_id:
+            valid_chunks.append(chunk_payload)
+
+    return valid_chunks

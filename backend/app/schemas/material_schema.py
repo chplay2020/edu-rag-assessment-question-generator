@@ -36,6 +36,11 @@ class JobResponse(BaseModel):
         from_attributes = True
 
 
+class MaterialChunkResponse(BaseModel):
+    chunk_id: int
+    content: str
+    chunk_index: Optional[int] = None
+      
 class MaterialProcessResponse(BaseModel):
     """Response trả về sau khi yêu cầu xử lý tài liệu thành công."""
     material_id: int

@@ -138,6 +138,19 @@ class QdrantVectorStore:
         )
         return getattr(response, "points", response)
 
+    def get_material_chunks_by_ids(self, chunk_ids: list[int]) -> list[dict[str, Any]]:
+        if not chunk_ids:
+            return []
+        
+        response = self.client.retrieve(
+            collection_name=self.material_collection,
+            ids=chunk_ids,
+            with_payload=True,
+            with_vectors=False,
+        )
+        # response is a list of Record objects
+        return [getattr(record, "payload", {}) for record in response]
+
 
 def get_vector_store() -> QdrantVectorStore:
     return QdrantVectorStore()
