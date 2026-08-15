@@ -76,18 +76,8 @@ def enqueue_material_processing(
     current_user_id: Annotated[int, Depends(get_current_user_id)],
     current_user_role: Annotated[str, Depends(get_current_user_role)],
 ) -> MaterialProcessResponse:
-    """Tạo job xử lý material và chạy nền.
-
-    - Chỉ owner của course hoặc Admin được xử lý.
-    - Chỉ cho phép bắt đầu khi trạng thái Material là ``uploaded`` hoặc ``failed``.
-    - Trả ``409 Conflict`` nếu Material đang ``processing`` / ``processed``
-      hoặc đã có Job ``pending``/``running`` cho cùng material.
-    - Tạo Job và cập nhật Material sang ``processing`` trong cùng một transaction
-      trước khi đưa task vào BackgroundTasks.
-    """
+    "Tạo job xử lý material và chạy nền."
     try:
-        # PostgreSQL serializes concurrent process requests for one Material.
-        # The lock is held until Job creation and the status update are committed.
         material = (
             db.query(Material)
             .filter(Material.id == material_id)

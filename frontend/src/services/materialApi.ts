@@ -158,13 +158,11 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// lấy URL tải xuống đầy đủ (gắn backend domain)
 export function getMaterialDownloadUrl(fileUrl: string): string {
   if (!fileUrl) return '#';
   if (fileUrl.startsWith('http')) return fileUrl;
 
   const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8000/api/v1';
-  // Xóa đuôi /api/v1 để lấy root domain của backend (http://localhost:8000)
   const backendRoot = baseUrl.replace(/\/api\/v1\/?$/, '');
 
   return `${backendRoot}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
@@ -176,10 +174,51 @@ export interface MaterialDetail extends Material {
   extracted_text_preview: string | null;
 }
 
+export interface MaterialProcessResponse {
+  material_id: number;
+  material_status: string;
+  job_id: number;
+  job_status: string;
+  task_type: string;
+}
+
+export interface JobResponse {
+  id: number;
+  material_id: number;
+  task_type: string;
+  status: string;
+  created_at: string;
+  finished_at: string | null;
+}
+
 // lấy thông tin chi tiết tài liệu
 export async function getMaterialById(materialId: number): Promise<MaterialDetail> {
   const res = await apiClient.get<MaterialDetail>(`/materials/${materialId}`);
-  materialDetailCache.set(getMaterialCacheKey(materialId), res.data);
+  const detail = res.data;
+  materialDetailCache.set(getMaterialCacheKey(materialId), detail);
+  // Cập nhật cache danh sách để CourseMaterials không hiển thị trạng thái cũ
+  const sessionPrefix = getMaterialSessionPrefix();
+  for (const [key, materials] of materialsByCourseCache.entries()) {
+    if (!key.startsWith(sessionPrefix)) continue;
+    const idx = materials.findIndex((m) => m.id === materialId);
+    if (idx !== -1) {
+      const updated = [...materials];
+      updated[idx] = { ...updated[idx], status: detail.status };
+      materialsByCourseCache.set(key, updated);
+    }
+  }
+  return detail;
+}
+
+// Yêu cầu xử lý tài liệu
+export async function processMaterial(materialId: number): Promise<MaterialProcessResponse> {
+  const res = await apiClient.post<MaterialProcessResponse>(`/materials/${materialId}/process`);
+  return res.data;
+}
+
+// Lấy trạng thái job theo ID
+export async function getJobById(jobId: number): Promise<JobResponse> {
+  const res = await apiClient.get<JobResponse>(`/jobs/${jobId}`);
   return res.data;
 }
 

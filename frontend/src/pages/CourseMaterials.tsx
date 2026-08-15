@@ -130,10 +130,11 @@ export const CourseMaterials: React.FC = () => {
   }, [courseId, id]);
 
   useEffect(() => {
+    // Luôn fetch mới khi mount để tránh cache cũ
     fetchCourse();
     fetchMaterials();
+  }, [courseId]);
 
-  }, [fetchCourse, fetchMaterials]);
 
   useEffect(() => {
     const hasProcessing = materials.some(m => m.status === 'processing');

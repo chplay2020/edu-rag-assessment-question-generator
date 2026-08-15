@@ -133,8 +133,20 @@ Không tự động dọn các dữ liệu sau:
 
 Nếu cần dọn, hãy xác nhận các ID/path trên thuộc dữ liệu test rồi xóa qua quy trình quản trị phù hợp; không nên xóa theo wildcard.
 
+## Tự phục hồi tài liệu bị kẹt trạng thái `processing`
+
+Nếu backend dừng đột ngột sau khi Material chuyển sang `processing` nhưng trước khi worker hoàn thành, Material có thể bị kẹt ở `processing` vô hạn dù không còn Job `pending`/`running` nào.
+
+`app.services.material_service.recover_orphaned_processing_materials(db, material_ids)` tự động phát hiện và reset các Material này về `uploaded`:
+
+- Được gọi tại `GET /api/v1/materials/course/{course_id}` và `GET /api/v1/materials/{id}`.
+- Chỉ reset khi `status == "processing"` **và** không có Job `process_material` ở `pending`/`running`.
+- Không reset nếu vẫn còn Job active (xử lý đang diễn ra bình thường).
+- Sau khi reset, giảng viên thấy trạng thái "Đã tải lên" và có thể bấm "Xử lý tài liệu" lại.
+- Commit ngay khi phát hiện orphan; các lần GET tiếp theo không thực hiện write thừa.
+
 ## Giới hạn MVP
 
-`BackgroundTasks` chạy trong chính tiến trình backend. Nếu server dừng đột ngột sau khi transaction endpoint đã commit, Job có thể còn `pending` hoặc `running` và Material có thể còn `processing`. MVP chưa có cơ chế lease/retry/recovery tự động; giai đoạn sau có thể thay bằng queue worker như Celery/RQ cùng timeout, retry và job reconciliation.
+`BackgroundTasks` chạy trong chính tiến trình backend. Nếu server dừng đột ngột sau khi transaction endpoint đã commit, Job có thể còn `pending` hoặc `running` và Material có thể còn `processing`. Cơ chế `recover_orphaned_processing_materials` xử lý trường hợp không còn Job active; giai đoạn sau có thể thay bằng queue worker như Celery/RQ cùng timeout, retry và job reconciliation.
 
 Chi tiết lỗi chỉ có trong backend log vì schema Job hiện không có `error_message`. Ngoài ra DB và Qdrant không có distributed transaction; nếu Qdrant upsert thành công nhưng commit DB thất bại thì cần reconciliation ở kiến trúc worker bền vững hơn.

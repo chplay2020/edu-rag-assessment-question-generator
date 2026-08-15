@@ -20,18 +20,12 @@ import {
   getMaterialById,
   getCachedMaterialById,
   downloadMaterialFile,
+  processMaterial,
+  getJobById,
   extractApiError,
   formatViDate,
   type MaterialDetail as MaterialDetailType,
 } from '../services/materialApi';
-import {
-  getMockState,
-  mockProcessMaterial,
-  resetMockState,
-  type ProcessingStatus,
-  type MockProcessingState,
-  type MockProcessOptions,
-} from '../mocks/materialProcessingMock';
 import { getMaterialStatusMeta } from '../utils/materialStatus';
 import './MaterialDetail.css';
 
@@ -45,7 +39,8 @@ function FileIcon({ filename, size = 20 }: { filename: string; size?: number }) 
   return <File size={size} weight="duotone" />;
 }
 
-// Hiển thị trạng thái Material bằng tiếng Việt, dùng helper dùng chung
+// Status Badge
+
 function StatusBadge({ status }: { status: string }) {
   const { label, modifier } = getMaterialStatusMeta(status);
   return (
@@ -55,12 +50,21 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Toast type
+// Toast
 
 interface ToastState {
   type: 'success' | 'error';
   message: string;
 }
+
+// Processing State
+
+type ProcessPhase =
+  | 'idle'
+  | 'sending'
+  | 'polling'
+  | 'done'
+  | 'failed';
 
 // Main Component
 
@@ -83,22 +87,22 @@ export const MaterialDetail: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  // Mock processing state (T029)
-  const [mockStatus, setMockStatus] = useState<ProcessingStatus | null>(null);
-  const [mockFailureReason, setMockFailureReason] = useState<string | null>(null);
-  const [mockChunkCount, setMockChunkCount] = useState<number>(0);
-  const [mockPreviewText, setMockPreviewText] = useState<string | null>(null);
-  const [simulateFailure, setSimulateFailure] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  //  Processing / polling state
+  const [processPhase, setProcessPhase] = useState<ProcessPhase>('idle');
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [processError, setProcessError] = useState<string | null>(null);
+
 
   // Toast
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Safety: track mount state
+  //  Refs cho cleanup
   const isMountedRef = useRef(true);
+  const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Toast helper
+  // Helpers
+
   const showToast = useCallback((type: 'success' | 'error', message: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ type, message });
@@ -107,56 +111,34 @@ export const MaterialDetail: React.FC = () => {
     }, 4500);
   }, []);
 
-  // Cleanup on unmount
+  const stopPolling = useCallback(() => {
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount / khi đổi materialId
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      stopPolling();
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
-  }, []);
+  }, [stopPolling]);
 
-  // Restore mock state on mount
+  // Reset processing state khi đổi materialId
   useEffect(() => {
-    if (!isValidMaterialId) return;
-    const existing = getMockState(mId);
-    if (!existing) return;
-    setMockStatus(existing.status);
-    setMockFailureReason(existing.failureReason);
-    if (existing.status === 'done') {
-      setMockChunkCount(existing.chunkCount);
-      setMockPreviewText(existing.extractedTextPreview);
-    }
-
-  }, [mId, isValidMaterialId]);
-
-  // Poll mock state while processing
-  useEffect(() => {
-    if (mockStatus !== 'processing' && mockStatus !== 'pending') return;
-
-    const interval = setInterval(() => {
-      const state = getMockState(mId);
-      if (!state) { clearInterval(interval); return; }
-
-      if (state.status === 'done' || state.status === 'failed') {
-        clearInterval(interval);
-        if (!isMountedRef.current) return;
-        setMockStatus(state.status);
-        if (state.status === 'done') {
-          setMockChunkCount(state.chunkCount);
-          setMockPreviewText(state.extractedTextPreview);
-          showToast('success', 'Tài liệu đã được xử lý thành công!');
-        } else {
-          setMockFailureReason(state.failureReason);
-          showToast('error', 'Xử lý tài liệu thất bại!');
-        }
-      }
-    }, 600);
-
-    return () => clearInterval(interval);
-  }, [mockStatus, mId, showToast]);
+    setProcessPhase('idle');
+    setJobStatus(null);
+    setProcessError(null);
+    stopPolling();
+  }, [mId, stopPolling]);
 
   // Load API data
+
   const loadData = useCallback(async () => {
     if (!isValidCourseId || !isValidMaterialId) {
       setError('Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.');
@@ -178,6 +160,8 @@ export const MaterialDetail: React.FC = () => {
         getMaterialById(mId),
       ]);
 
+      if (!isMountedRef.current) return;
+
       if (materialData.course_id !== cId) {
         setError('Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.');
       } else {
@@ -185,16 +169,16 @@ export const MaterialDetail: React.FC = () => {
         setMaterial(materialData);
       }
     } catch (err: unknown) {
+      if (!isMountedRef.current) return;
       console.error('Lỗi tải dữ liệu MaterialDetail:', err);
       const anyErr = err as { response?: { status?: number } };
-      const msg = extractApiError(err);
       if (anyErr?.response?.status === 404 || anyErr?.response?.status === 403) {
         setError('Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.');
       } else {
-        setError(msg);
+        setError(extractApiError(err));
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, [cId, mId, isValidCourseId, isValidMaterialId]);
 
@@ -202,9 +186,111 @@ export const MaterialDetail: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Download
+  //  Refresh material detail
+
+  const refreshMaterial = useCallback(async () => {
+    try {
+      const materialData = await getMaterialById(mId);
+      if (isMountedRef.current) setMaterial(materialData);
+    } catch (err) {
+      console.error('[T029] Lỗi refresh material:', err);
+    }
+  }, [mId]);
+
+  // Polling job status
+
+  const scheduleNextPoll = useCallback((currentJobId: number) => {
+    stopPolling();
+    pollingTimerRef.current = setTimeout(async () => {
+      if (!isMountedRef.current) return;
+
+      try {
+        const job = await getJobById(currentJobId);
+        if (!isMountedRef.current) return;
+
+        setJobStatus(job.status);
+
+        if (job.status === 'done') {
+          setProcessPhase('done');
+          await refreshMaterial();
+          if (isMountedRef.current) {
+            showToast('success', 'Tài liệu đã được xử lý thành công!');
+          }
+        } else if (job.status === 'failed') {
+          setProcessPhase('failed');
+          setProcessError('Xử lý tài liệu thất bại. Vui lòng thử lại.');
+          showToast('error', 'Xử lý tài liệu thất bại!');
+        } else {
+          // pending | running → tiếp tục poll
+          scheduleNextPoll(currentJobId);
+        }
+      } catch (err) {
+        if (!isMountedRef.current) return;
+        console.error('[T029] Lỗi polling job:', err);
+        // Lỗi mạng tạm thời → thử lại
+        scheduleNextPoll(currentJobId);
+      }
+    }, 2000);
+  }, [stopPolling, refreshMaterial, showToast]);
+
+  //  Xử lý khi nhấn nút "Xử lý tài liệu"
+
+  const handleProcessClick = useCallback(async () => {
+    if (!material) return;
+    setProcessPhase('sending');
+    setProcessError(null);
+
+    try {
+      const resp = await processMaterial(mId);
+
+      if (!isMountedRef.current) return;
+
+      setJobStatus(resp.job_status);
+      setProcessPhase('polling');
+
+      // Cập nhật material status ngay lập tức (không cần reload)
+      setMaterial((prev) => prev ? { ...prev, status: 'processing' } : prev);
+      showToast('success', 'Đã gửi yêu cầu xử lý, đang chờ kết quả...');
+      scheduleNextPoll(resp.job_id);
+    } catch (err: unknown) {
+      if (!isMountedRef.current) return;
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      const status = axiosErr?.response?.status;
+
+      if (status === 409) {
+        const detail = axiosErr?.response?.data?.detail ?? '';
+        setMaterial((prev) => prev ? { ...prev, status: 'processing' } : prev);
+        setProcessPhase('polling');
+        showToast('error', 'Tài liệu đang được xử lý. Không thể tạo thêm yêu cầu mới.');
+        console.warn('[T029] 409 Conflict:', detail);
+      } else if (status === 404) {
+        setProcessPhase('idle');
+        setProcessError('Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.');
+        showToast('error', 'Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.');
+      } else {
+        setProcessPhase('failed');
+        const msg = extractApiError(err);
+        setProcessError(msg);
+        showToast('error', msg);
+      }
+    }
+  }, [material, mId, showToast, scheduleNextPoll]);
+
+  //  Thử lại sau khi thất bại
+
+  const handleRetryClick = useCallback(() => {
+    setProcessPhase('idle');
+    setJobStatus(null);
+    setProcessError(null);
+    stopPolling();
+
+    setMaterial((prev) => prev ? { ...prev, status: 'failed' } : prev);
+  }, [stopPolling]);
+
+  //  Download
+
   const handleDownloadBtn = async () => {
-    if (!material || !material.file_url) return;
+    if (!material?.file_url) return;
     setIsDownloading(true);
     setDownloadError(null);
     try {
@@ -216,56 +302,40 @@ export const MaterialDetail: React.FC = () => {
     }
   };
 
-  // Mock processing handlers
-  const handleProcessClick = () => {
-    setShowConfirmModal(true);
-  };
+  //  Computed display values
+  const effectiveMaterialStatus = (() => {
+    if (processPhase === 'polling' || processPhase === 'sending') return 'processing';
+    if (processPhase === 'done') return material?.status ?? 'processed';
+    if (processPhase === 'failed') return 'failed';
+    return material?.status ?? 'unknown';
+  })();
 
-  const handleConfirmProcess = () => {
-    setShowConfirmModal(false);
-    setMockFailureReason(null);
+  const isProcessingActive =
+    processPhase === 'sending' ||
+    processPhase === 'polling' ||
+    effectiveMaterialStatus === 'processing';
 
-    const opts: MockProcessOptions = { simulateFailure };
+  // Nút có thể nhấn khi: material uploaded / failed VÀ không đang xử lý
+  const canProcess =
+    !isProcessingActive &&
+    processPhase !== 'done' &&
+    (effectiveMaterialStatus === 'uploaded' || effectiveMaterialStatus === 'failed');
 
-    mockProcessMaterial(mId, opts, (state: MockProcessingState) => {
-      if (!isMountedRef.current) return;
-      setMockStatus(state.status);
-      if (state.status === 'processing') {
-        showToast('success', 'Đã bắt đầu xử lý tài liệu, vui lòng chờ...');
-      } else if (state.status === 'done') {
-        setMockChunkCount(state.chunkCount);
-        setMockPreviewText(state.extractedTextPreview);
-        showToast('success', 'Tài liệu đã được xử lý thành công!');
-      } else if (state.status === 'failed') {
-        setMockFailureReason(state.failureReason);
-        showToast('error', 'Xử lý tài liệu thất bại!');
-      }
-    }).catch((err: unknown) => {
-      if (!isMountedRef.current) return;
-      console.error('[T029 Mock] Lỗi không xác định:', err);
-      setMockStatus('failed');
-      setMockFailureReason('Lỗi không xác định trong môi trường mock.');
-      showToast('error', 'Xử lý tài liệu thất bại!');
-    });
-  };
+  const isDone =
+    processPhase === 'done' ||
+    (processPhase === 'idle' && effectiveMaterialStatus === 'processed');
 
-  const handleRetryProcess = () => {
-    resetMockState(mId);
-    setMockStatus(null);
-    setMockFailureReason(null);
-    setMockChunkCount(0);
-    setMockPreviewText(null);
-    setShowConfirmModal(true);
-  };
+  const isFailed =
+    processPhase === 'failed' ||
+    (processPhase === 'idle' && effectiveMaterialStatus === 'failed');
 
-  // Computed display values
-  const isProcessingActive = mockStatus === 'pending' || mockStatus === 'processing';
-  const effectiveStatus = mockStatus ?? (material?.status ?? 'unknown');
-  const effectiveChunkCount = mockStatus === 'done' ? mockChunkCount : (material?.chunk_count ?? 0);
-  const effectivePreview = mockStatus === 'done' ? mockPreviewText : material?.extracted_text_preview;
-  const hasPreview = Boolean(effectivePreview && effectivePreview.trim().length > 0);
+  const hasPreview = Boolean(
+    material?.extracted_text_preview &&
+    material.extracted_text_preview.trim().length > 0
+  );
 
-  // Loading
+  //  Loading
+
   if (loading) {
     return (
       <div className="md-container md-centered">
@@ -290,6 +360,8 @@ export const MaterialDetail: React.FC = () => {
     );
   }
 
+  // Render
+
   return (
     <div className="md-container">
 
@@ -312,52 +384,6 @@ export const MaterialDetail: React.FC = () => {
           >
             <X size={14} />
           </button>
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      {showConfirmModal && (
-        <div
-          className="md-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="md-modal-title"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowConfirmModal(false);
-          }}
-        >
-          <div className="md-modal-dialog">
-            <h3 id="md-modal-title" className="md-modal-title">
-              Xác nhận xử lý tài liệu
-            </h3>
-            <p className="md-modal-body">
-              Tài liệu <strong>"{material.title}"</strong> sẽ được phân tích và tách thành
-              các đoạn nội dung để hỗ trợ tìm kiếm và tạo câu hỏi.
-            </p>
-            <label className="md-modal-toggle" htmlFor="md-simulate-failure">
-              <input
-                id="md-simulate-failure"
-                type="checkbox"
-                checked={simulateFailure}
-                onChange={(e) => setSimulateFailure(e.target.checked)}
-              />
-              <span>[Mock] Giả lập kịch bản thất bại</span>
-            </label>
-            <div className="md-modal-actions">
-              <button
-                className="md-modal-btn-cancel"
-                onClick={() => setShowConfirmModal(false)}
-              >
-                Huỷ
-              </button>
-              <button
-                className="md-modal-btn-confirm"
-                onClick={handleConfirmProcess}
-              >
-                Xác nhận xử lý
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -401,7 +427,7 @@ export const MaterialDetail: React.FC = () => {
             <div className="md-title-block">
               <h1 className="md-title" title={material.title}>{material.title}</h1>
               <div className="md-inline-meta">
-                <StatusBadge status={effectiveStatus} />
+                <StatusBadge status={effectiveMaterialStatus} />
                 <div className="md-secondary-meta">
                   <span title="Mã môn học">{course.code}</span>
                   <span className="md-meta-dot">·</span>
@@ -409,7 +435,7 @@ export const MaterialDetail: React.FC = () => {
                   <span className="md-meta-dot">·</span>
                   <span title="ID người tải">ID người tải: {material.uploaded_by}</span>
                   <span className="md-meta-dot">·</span>
-                  <span title="Số đoạn nội dung">Số đoạn nội dung: {effectiveChunkCount}</span>
+                  <span title="Số đoạn nội dung">Số đoạn nội dung: {material.chunk_count ?? 0}</span>
                 </div>
               </div>
             </div>
@@ -417,7 +443,7 @@ export const MaterialDetail: React.FC = () => {
 
           {/* Action buttons */}
           <div className="md-actions">
-            {/* Download – unchanged */}
+            {/* Download */}
             <button
               className="md-btn-download"
               onClick={handleDownloadBtn}
@@ -431,7 +457,7 @@ export const MaterialDetail: React.FC = () => {
               <span>Tải xuống</span>
             </button>
 
-            {/* Process button – pending / processing */}
+            {/* Nút đang xử lý */}
             {isProcessingActive && (
               <button
                 className="md-btn-process"
@@ -441,32 +467,32 @@ export const MaterialDetail: React.FC = () => {
               >
                 <CircleNotch size={18} className="md-spin" />
                 <span>
-                  {mockStatus === 'pending' ? 'Đang chuẩn bị...' : 'Đang xử lý'}
+                  {processPhase === 'sending'
+                    ? 'Đang gửi yêu cầu...'
+                    : jobStatus === 'pending'
+                      ? 'Đang chờ xử lý...'
+                      : 'Đang xử lý'}
                 </span>
               </button>
             )}
 
-            {/* Process button – idle (null) or failed */}
-            {!isProcessingActive && mockStatus !== 'done' && (
+            {/* Nút xử lý (uploaded / failed ở idle) */}
+            {canProcess && (
               <button
-                className={`md-btn-process${mockStatus === 'failed' ? ' md-btn-process-retry' : ''}`}
-                onClick={mockStatus === 'failed' ? handleRetryProcess : handleProcessClick}
-                aria-label={
-                  mockStatus === 'failed'
-                    ? 'Thử lại xử lý tài liệu'
-                    : 'Xử lý tài liệu'
-                }
+                className={`md-btn-process${isFailed ? ' md-btn-process-retry' : ''}`}
+                onClick={isFailed ? handleRetryClick : handleProcessClick}
+                aria-label={isFailed ? 'Thử lại xử lý tài liệu' : 'Xử lý tài liệu'}
               >
-                {mockStatus === 'failed'
+                {isFailed
                   ? <ArrowsClockwise size={18} />
                   : <Gear size={18} />
                 }
-                <span>{mockStatus === 'failed' ? 'Thử lại' : 'Xử lý tài liệu'}</span>
+                <span>{isFailed ? 'Thử lại' : 'Xử lý tài liệu'}</span>
               </button>
             )}
 
-            {/* Process button – done */}
-            {mockStatus === 'done' && (
+            {/* Nút sau khi xử lý xong */}
+            {isDone && !isProcessingActive && !canProcess && (
               <button
                 className="md-btn-process md-btn-process-done"
                 disabled
@@ -487,14 +513,14 @@ export const MaterialDetail: React.FC = () => {
           </div>
         )}
 
-        {/* Process failure reason */}
-        {mockStatus === 'failed' && mockFailureReason && (
-          <div className="md-process-error" role="alert">
+        {/* Process error */}
+        {processError && (
+          <div className="md-process-error" role="alert" aria-live="assertive">
             <WarningCircle size={16} weight="fill" />
-            <span className="md-process-error-body">{mockFailureReason}</span>
+            <span className="md-process-error-body">{processError}</span>
             <button
               className="md-process-error-dismiss"
-              onClick={() => setMockFailureReason(null)}
+              onClick={() => setProcessError(null)}
               aria-label="Đóng thông báo lỗi"
             >
               <X size={14} />
@@ -507,23 +533,26 @@ export const MaterialDetail: React.FC = () => {
       <div className="md-preview-section card-panel">
         <h3 className="md-preview-title">Xem trước nội dung</h3>
 
-        {/* Processing spinner */}
+        {/* Đang xử lý */}
         {isProcessingActive && (
-          <div className="md-preview-processing" aria-live="polite" aria-label="Đang xử lý tài liệu">
+          <div
+            className="md-preview-processing"
+            aria-live="polite"
+            aria-label="Đang xử lý tài liệu"
+          >
             <CircleNotch size={28} className="md-spin" />
             <p>
-              {mockStatus === 'pending'
+              {processPhase === 'sending' || jobStatus === 'pending'
                 ? 'Đang chuẩn bị xử lý tài liệu...'
-                : 'Đang phân tích và tách nội dung, vui lòng chờ...'
-              }
+                : 'Đang phân tích và tách nội dung, vui lòng chờ...'}
             </p>
           </div>
         )}
 
-        {/* Preview content */}
+        {/* Có preview */}
         {!isProcessingActive && hasPreview && (
           <div className="md-preview-content">
-            {effectivePreview}
+            {material.extracted_text_preview}
           </div>
         )}
 
@@ -533,10 +562,11 @@ export const MaterialDetail: React.FC = () => {
             <FileText size={40} weight="duotone" className="md-empty-icon" aria-hidden="true" />
             <p className="md-empty-title">Chưa có nội dung.</p>
             <p className="md-empty-desc">
-              {mockStatus === 'failed'
-                ? 'Xử lý thất bại. Vui lòng thử lại.'
-                : 'Nội dung sẽ xuất hiện sau khi tài liệu được xử lý.'
-              }
+              {effectiveMaterialStatus === 'failed'
+                ? 'Không thể xử lý nội dung tài liệu. Vui lòng thử lại.'
+                : effectiveMaterialStatus === 'processed'
+                  ? 'Nội dung đang được trích xuất.'
+                  : 'Hãy xử lý tài liệu để xem trước nội dung.'}
             </p>
           </div>
         )}

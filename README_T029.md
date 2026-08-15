@@ -1,177 +1,146 @@
-# README – T029: Material Processing Status UI (MOCK)
+# README T029 — Frontend Process Material + Polling trạng thái Job
 
-> Giao diện này chỉ giả lập luồng xử lý tài liệu để kiểm tra UI/UX.
-> API T028 (`POST /api/v1/materials/{material_id}/process`) **chưa** được tích hợp.
+## Mục tiêu
 
----
-
-## 1. Trạng thái đã mô phỏng
-
-| Trạng thái | Nhãn hiển thị | Màu dot | Mô tả |
-|---|---|---|---|
-| `pending` | Chờ xử lý | 🟡 vàng | Ngay sau khi bấm Xác nhận (~400 ms) |
-| `processing` | Đang xử lý | 🟡 vàng | Spinner quay, nút bị disable (~3–5 giây) |
-| `done` | Đã xử lý | 🟢 xanh | Badge xanh, preview text giả, chunk_count > 0 |
-| `failed` | Xử lý thất bại | 🔴 đỏ | Banner lý do lỗi, nút "Thử lại" |
+Cho phép người dùng xử lý tài liệu từ trang chi tiết, theo dõi tiến trình qua polling job và tự động cập nhật nội dung sau khi worker hoàn thành. Không dùng mock data.
 
 ---
 
-## 2. Cách bật kịch bản thành công / thất bại
+## API được sử dụng
 
-### Kịch bản thành công (mặc định)
-1. Mở trang chi tiết tài liệu.
-2. Bấm **"Xử lý tài liệu"**.
-3. **Không** tích checkbox "Giả lập kịch bản thất bại".
-4. Bấm **"Xác nhận xử lý"**.
-5. Quan sát: `pending` → `processing` (3–5 giây) → `done`.
-6. Kiểm tra: badge xanh "Đã xử lý", `chunk_count` tăng, preview text xuất hiện.
-
-### Kịch bản thất bại
-1. Bấm **"Xử lý tài liệu"**.
-2. **Tích** checkbox **"[Mock] Giả lập kịch bản thất bại"**.
-3. Bấm **"Xác nhận xử lý"**.
-4. Quan sát: `pending` → `processing` (3–5 giây) → `failed`.
-5. Kiểm tra: badge đỏ "Xử lý thất bại", banner lý do lỗi, nút "Thử lại" xuất hiện.
-
-### Kịch bản thử lại sau thất bại
-1. Sau khi gặp `failed`, bấm **"Thử lại"**.
-2. Modal xác nhận xuất hiện lại.
-3. Có thể bật/tắt kịch bản thất bại để kiểm thử vòng lặp.
-
----
-
-## 3. Kiểm tra chuyển trang trong lúc xử lý
-
-1. Bấm Xác nhận Xử lý → mock bắt đầu chạy.
-2. Chuyển sang trang khác (ví dụ: danh sách tài liệu).
-3. Quay lại trang chi tiết.
-4. UI sẽ đọc lại trạng thái từ `sessionStorage` / memory store.
-5. Nếu xử lý đã xong: hiển thị trạng thái cuối (done/failed).
-6. Nếu đang xử lý: polling 600 ms sẽ tiếp tục cho đến khi xong.
-
----
-
-## 4. Tổ chức mock service
-
-```
-frontend/src/mocks/
-└── materialProcessingMock.ts    ← toàn bộ logic mock tập trung tại đây
-```
-
-### Các hàm export
-
-| Hàm | Mô tả |
-|---|---|
-| `getMockState(materialId)` | Đọc trạng thái hiện tại (memory → sessionStorage) |
-| `resetMockState(materialId)` | Xóa trạng thái một tài liệu |
-| `resetAllMockStates()` | Xóa toàn bộ trạng thái mock |
-| `mockProcessMaterial(id, opts, onTransition?)` | Giả lập luồng xử lý, trả Promise |
-
-### Lưu trữ
-- **Memory**: `Map<number, MockProcessingState>` – nhanh, không persist qua F5.
-- **sessionStorage**: backup tự động – persist khi navigate nhưng mất khi đóng tab.
-
----
-
-## 5. Những phần cần thay khi API T028 hoàn thành
-
-### 5.1. Gọi API thật thay mockProcessMaterial
-
-```typescript
-// TRƯỚC (mock)
-await mockProcessMaterial(materialId, options, onTransition);
-
-// SAU (API thật)
-await apiClient.post(`/materials/${materialId}/process`);
-```
-
-### 5.2. Poll trạng thái thật thay polling mock
-
-```typescript
-// TRƯỚC (mock polling – check sessionStorage/memory)
-const state = getMockState(mId);
-
-// SAU (API polling)
-const data = await getMaterialById(mId);
-// Dừng khi data.status 'done' | 'failed'
-```
-
-### 5.3. Đọc chunk_count và extracted_text_preview từ API thật
-
-```typescript
-// TRƯỚC (mock)
-setMockChunkCount(state.chunkCount);
-setMockPreviewText(state.extractedTextPreview);
-
-// SAU (API)
-setMaterial(materialData);  // dữ liệu thật từ GET /materials/{id}
-```
-
-### 5.4. Xóa mock service và imports
-
-Sau khi tích hợp xong:
-- Xóa `frontend/src/mocks/materialProcessingMock.ts`
-- Xóa các import từ mock trong `MaterialDetail.tsx`
-- Xóa các state mock: `mockStatus`, `mockFailureReason`, `mockChunkCount`, `mockPreviewText`
-- Xóa modal checkbox "Giả lập kịch bản thất bại"
-- Dùng trực tiếp `material.status`, `material.chunk_count`, `material.extracted_text_preview`
-
-### Endpoints cần tích hợp (T028)
-
-```
-POST /api/v1/materials/{material_id}/process
-GET  /api/v1/materials/{material_id}          ← poll đến khi status = done | failed
-```
-
----
-
-## 6. Danh sách file đã tạo / sửa
-
-| File | Thao tác | Mô tả |
+| Mục đích | Method | Endpoint |
 |---|---|---|
-| `frontend/src/mocks/materialProcessingMock.ts` | **TẠO MỚI** | Mock service: lưu trạng thái, giả lập timing |
-| `frontend/src/pages/MaterialDetail.tsx` | **SỬA** | Kích hoạt nút, thêm modal, toast, polling, timer cleanup |
-| `frontend/src/pages/MaterialDetail.css` | **SỬA** | Toast, modal, btn-retry, btn-done, failure banner, md-spin |
-| `frontend/src/pages/CourseMaterials.tsx` | **SỬA** | StatusBadge: thêm done/failed/completed mapping |
-| `frontend/src/pages/CourseMaterials.css` | **SỬA** | Thêm `.cm-status-done` và `.cm-status-failed` |
-| `README_T029.md` | **TẠO MỚI** | Tài liệu này |
+| Yêu cầu xử lý tài liệu | `POST` | `/api/v1/materials/{material_id}/process` |
+| Lấy trạng thái job | `GET` | `/api/v1/jobs/{job_id}` |
+| Lấy chi tiết material | `GET` | `/api/v1/materials/{material_id}` |
 
----
-
-## 7. Kết quả lint / build
-
-```
-npm run lint  → 0 errors, 1 warning (cũ, không liên quan T029)
-tsc -b --noEmit → 0 errors, 0 warnings
-npm run build → ✓ built in ~864ms
+### Response `POST /process` (202 Accepted)
+```json
+{
+  "material_id": 12,
+  "material_status": "processing",
+  "job_id": 8,
+  "job_status": "pending",
+  "task_type": "process_material"
+}
 ```
 
----
-
-## 8. Danh sách kiểm tra thủ công
-
-- [x] Ban đầu chưa xử lý → nút "Xử lý tài liệu" enabled
-- [x] Bấm nút → modal xác nhận xuất hiện, có toggle thất bại
-- [x] Xác nhận → `pending` → `processing` (spinner, nút disable)
-- [x] Sau 3–5s → `done`: badge xanh, chunk_count > 0, preview text hiện
-- [x] Kịch bản thất bại → `failed`: badge đỏ, lý do, nút "Thử lại"
-- [x] Thử lại → mở lại modal, có thể chọn lại kịch bản
-- [x] Chuyển trang rồi quay lại → trạng thái được khôi phục
-- [x] Nút tải xuống hoạt động bình thường (không bị ảnh hưởng)
-- [x] Không có lỗi console
-- [x] Không còn timer sau unmount (isMountedRef guard)
-- [x] Responsive desktop & mobile (kế thừa CSS hiện có)
-- [x] aria-label, role="dialog", aria-live trên toast
+### Response `GET /jobs/{job_id}` (200 OK)
+```json
+{
+  "id": 8,
+  "material_id": 12,
+  "task_type": "process_material",
+  "status": "done",
+  "created_at": "2026-08-15T02:00:00",
+  "finished_at": "2026-08-15T02:01:00"
+}
+```
 
 ---
 
-## 9. Kết luận
+## Luồng hoạt động
 
-> **Mock UI T029 đã hoàn thành.**
-> **T029 thật vẫn chờ API T028.**
+```
+Người dùng nhấn "Xử lý tài liệu"
+    ↓
+POST /materials/{id}/process
+    ↓ 202 Accepted
+Nhận job_id  →  processPhase = 'polling'
+    ↓
+setTimeout 2s → GET /jobs/{job_id}
+    ↓
+job.status == 'pending' | 'running' → lặp lại setTimeout 2s
+job.status == 'done'   → GET /materials/{id} → cập nhật UI → thông báo thành công
+job.status == 'failed' → hiển thị lỗi → nút "Thử lại"
+```
+
+---
+
+## Mapping trạng thái
+
+### Material
+| Giá trị backend | Hiển thị tiếng Việt |
+|---|---|
+| `uploaded` | Chưa xử lý |
+| `processing` | Đang xử lý |
+| `processed` | Đã xử lý |
+| `failed` | Xử lý thất bại |
+
+### Job
+| Giá trị backend | Hiển thị tiếng Việt |
+|---|---|
+| `pending` | Đang chờ |
+| `running` | Đang xử lý |
+| `done` | Hoàn thành |
+| `failed` | Thất bại |
+
+---
+
+## Xử lý lỗi
+
+| Tình huống | Hành vi |
+|---|---|
+| `404` khi process | Hiển thị "Không tìm thấy tài liệu hoặc bạn không có quyền truy cập." |
+| `409` khi process | Thông báo "Tài liệu đang được xử lý", không tạo job mới |
+| Lỗi mạng khi polling | Tự động thử lại sau 2 giây (không dừng polling) |
+| Job failed | Hiển thị thông báo lỗi, nút đổi thành "Thử lại" |
+| Lỗi server (5xx) | Dừng xử lý, hiển thị thông báo, cho phép thử lại |
+
+---
+
+## Cơ chế dừng polling
+
+- Dùng `setTimeout` (không phải `setInterval`) để đảm bảo chỉ có **một timer** tại một thời điểm.
+- `pollingTimerRef` giữ reference của timer hiện tại.
+- `stopPolling()` hủy timer ngay khi:
+  - Component unmount
+  - `materialId` thay đổi (chuyển trang)
+  - Job kết thúc (`done` hoặc `failed`)
+- `isMountedRef` ngăn setState sau khi component đã unmount.
+
+---
+
+## Files đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `frontend/src/utils/materialStatus.ts` | Sửa `uploaded → Chưa xử lý`; thêm `getJobStatusMeta`, `getJobStatusLabel` |
+| `frontend/src/services/materialApi.ts` | Thêm `MaterialProcessResponse`, `JobResponse`, `processMaterial()`, `getJobById()`; cập nhật cache list trong `getMaterialById` |
+| `frontend/src/pages/MaterialDetail.tsx` | Xóa toàn bộ mock, thêm real API + polling |
+| `frontend/src/pages/CourseMaterials.tsx` | Fix useEffect dependency để luôn fetch mới khi navigate về |
+| `README_T029.md` | Tài liệu này |
+
+---
+
+## Kết quả kiểm thử (thủ công)
+
+Chạy `npm run lint` và `npm run build` để xác nhận không có lỗi TypeScript/ESLint.
+
+Các test case cần kiểm tra thủ công khi backend chạy:
+
+1. Material `uploaded` → nhấn "Xử lý tài liệu" → nhận `202`, UI chuyển sang "Đang xử lý".
+2. Polling mỗi 2 giây → khi job `done` → UI hiển thị "Đã xử lý", chunk_count và preview từ API thật.
+3. Nhấn xử lý trùng (material đang `processing`) → API trả `409` → UI báo lỗi, không tạo job mới.
+4. Job `failed` → UI hiển thị lỗi + nút "Thử lại".
+5. Reload trang trong lúc `processing` → hiển thị đúng trạng thái (xem giới hạn bên dưới).
+6. Navigate về danh sách → trạng thái mới nhất được hiển thị (fetch lại từ API).
+7. Chuyển sang tài liệu khác → polling timer dừng, không leak.
+8. Không còn chữ trạng thái tiếng Anh hay dữ liệu mock trên UI.
+
+---
+
+## Giới hạn còn lại
+
+> **Polling không tự phục hồi sau reload trang khi material đang `processing`.**
 >
-> Khi T028 hoàn thành (POST /api/v1/materials/{id}/process), cần:
-> 1. Thay thế `mockProcessMaterial` bằng lời gọi API thật.
-> 2. Thay polling mock bằng poll GET /materials/{id} (hoặc WebSocket nếu có).
-> 3. Xóa file mock và dọn state mock khỏi component.
-> 4. Đánh dấu T029 Done sau khi test end-to-end thành công.
+> Backend endpoint `GET /api/v1/materials/{id}` không trả `job_id` hiện tại trong response.
+> Do đó, nếu người dùng reload trang khi material đang ở trạng thái `processing`,
+> frontend chỉ hiển thị đúng trạng thái `processing` (từ `material.status`)
+> nhưng **không thể tự động tiếp tục polling** vì không biết `job_id`.
+>
+> **Giải pháp khi backend hỗ trợ**: Thêm trường `active_job_id` vào `MaterialDetailResponse`
+> để frontend lấy job_id và khôi phục polling.
+>
+> Hành vi hiện tại: Material hiển thị "Đang xử lý" cho đến khi người dùng rời trang
+> hoặc worker hoàn thành (sau đó người dùng cần reload thủ công để thấy "Đã xử lý").

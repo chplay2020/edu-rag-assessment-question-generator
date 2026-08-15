@@ -13,7 +13,6 @@ from app.core.database import SessionLocal
 from app.models.material import Chunk, Job, Material
 
 
-# Trạng thái Material có thể khởi động từ đầu (không qua endpoint)
 PROCESSABLE_STATUSES = {"uploaded", "failed"}
 logger = logging.getLogger(__name__)
 
@@ -95,18 +94,6 @@ def _index_material_chunks(
 
 
 def process_material(material_id: int) -> None:
-    """Worker xử lý pipeline tài liệu: extract → clean → chunk → embed → lưu vector.
-
-    Hỗ trợ hai luồng gọi:
-    - Từ endpoint ``POST /materials/{id}/process``: Material đã ở ``processing``,
-      Job đã ở ``pending`` (tạo sẵn trong transaction của endpoint).
-    - Trực tiếp từ unit test cũ: Material ở ``uploaded`` hoặc ``failed``,
-      tạo Job nếu chưa có.
-
-    Cơ chế chống xử lý trùng:
-    - Nếu Material là ``processing`` nhưng không có Job ``pending``/``running``
-      hợp lệ thì dừng với lỗi (tránh chạy hai worker song song).
-    """
     db: Session = SessionLocal()
     material: Material | None = None
     job: Job | None = None
@@ -125,7 +112,7 @@ def process_material(material_id: int) -> None:
         current_status = cast(str, material.status)
 
         if current_status == "processing":
-            # Material đã ở processing (do endpoint set), tìm Job tương ứng
+            # Material đã ở processing
             job = _latest_process_job(db, material_id, for_update=True)
             if not job:
                 raise MaterialProcessingError(
@@ -169,7 +156,7 @@ def process_material(material_id: int) -> None:
                 f"Material {material_id} cannot be processed from status '{current_status}'."
             )
 
-        # ── Pipeline xử lý ────────────────────────────────────────────────────
+        # Pipeline xử lý
         raw_text, _raw_path = extract_and_save_raw_text(
             material_id=material_id,
             file_path=cast(str, material.file_path),
@@ -203,7 +190,7 @@ def process_material(material_id: int) -> None:
             source_chunks_by_index=source_chunks_by_index,
         )
 
-        # ── Thành công ────────────────────────────────────────────────────────
+        # Thành công
         material.status = "processed"
         _set_job_status(db, job, "done")
         db.add(material)
