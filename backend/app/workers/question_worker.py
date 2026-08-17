@@ -1,14 +1,21 @@
+import logging
 from datetime import datetime, timezone
 from typing import cast
 
 from sqlalchemy.orm import Session
 
-from app.ai.generation import question_generator
-from app.ai.retrieval import retriever
-from app.ai.validation import question_validator
+from app.ai import pipeline
+from app.ai.embedding.embedder import embed_texts, is_semantic_embedding_enabled
+from app.ai.generation import question_generator  # noqa: F401  (điểm mock của test/pipeline)
+from app.ai.retrieval import retriever  # noqa: F401  (điểm mock của test/pipeline)
+from app.ai.validation import question_validator  # noqa: F401  (điểm mock của test/pipeline)
+from app.ai.vector_store.qdrant_store import QuestionVector, get_vector_store
 from app.core.database import SessionLocal
 from app.models.material import Job, Material
 from app.models.question import Option, Question
+
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionGenerationError(Exception):
@@ -22,10 +29,38 @@ def _set_job_status(db: Session, job: Job, status: str) -> None:
     db.add(job)
 
 
-def _question_status_for_validation(
-    validation_result: question_validator.ValidationResult,
-) -> str:
-    return "review_required" if validation_result.warnings else "draft"
+def _index_questions(questions: list[Question], material_id: int, course_id: int) -> None:
+    """Đẩy câu hỏi vừa lưu vào collection question_vectors.
+
+    Nhờ bước này, lần sinh sau có thể phát hiện trùng với toàn bộ ngân hàng
+    câu hỏi. Lỗi ở đây không được làm hỏng job vì câu hỏi đã lưu DB thành công.
+    """
+    if not questions or not is_semantic_embedding_enabled():
+        return
+
+    try:
+        vectors = embed_texts([cast(str, question.content) for question in questions])
+        store = get_vector_store()
+        store.ensure_collections()
+        store.upsert_question_vectors(
+            [
+                QuestionVector(
+                    question_id=cast(int, question.id),
+                    material_id=material_id,
+                    course_id=course_id,
+                    content=cast(str, question.content),
+                    difficulty=cast(str | None, question.difficulty),
+                    bloom_level=cast(str | None, question.bloom_level),
+                    status=cast(str | None, question.status),
+                )
+                for question in questions
+            ],
+            vectors,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Không index được câu hỏi vào Qdrant (material_id=%s): %s", material_id, exc
+        )
 
 
 def process_question_generation_job(
@@ -70,34 +105,32 @@ def process_question_generation_job(
         if not retrieval_query:
             retrieval_query = f"material {material_id}"
 
-        context_chunks = retriever.retrieve_context(
-            retrieval_query,
+        outcome = pipeline.generate_questions_for_material(
             material_id=material_id,
             course_id=course_id,
-            top_k=top_k,
-        )
-        generated_batch = question_generator.generate_questions(
-            context_chunks=context_chunks,
-            material_id=material_id,
-            course_id=course_id,
+            query=retrieval_query,
             number_of_questions=number_of_questions,
             difficulty=difficulty,
             bloom_level=bloom_level,
             language=language,
+            top_k=top_k,
         )
-        validation_results = question_validator.validate_questions(generated_batch)
-        invalid_results = [result for result in validation_results if not result.is_valid]
-        if invalid_results:
-            first_errors = "; ".join(invalid_results[0].errors)
+
+        for warning in outcome.warnings:
+            logger.warning("Job %s: %s", job_id, warning)
+        for dropped in outcome.dropped:
+            logger.info("Job %s loại bỏ câu hỏi: %s", job_id, dropped)
+
+        if not outcome.candidates:
             raise QuestionGenerationError(
-                f"Generated question validation failed: {first_errors}"
+                f"Không có câu hỏi hợp lệ nào cho job {job_id}. "
+                f"Đã loại bỏ {len(outcome.dropped)} câu: "
+                + ("; ".join(outcome.dropped[:3]) or "không rõ nguyên nhân")
             )
 
-        for generated_question, validation_result in zip(
-            generated_batch.questions,
-            validation_results,
-            strict=True,
-        ):
+        saved_questions: list[Question] = []
+        for candidate in outcome.candidates:
+            generated_question = candidate.question
             question = Question(
                 material_id=material_id,
                 course_id=course_id,
@@ -107,7 +140,7 @@ def process_question_generation_job(
                 bloom_level=generated_question.bloom_level,
                 question_type="multiple_choice",
                 explanation=generated_question.explanation,
-                status=_question_status_for_validation(validation_result),
+                status=candidate.status,
                 source_chunk_ids=generated_question.source_chunk_ids,
             )
             setattr(
@@ -119,9 +152,12 @@ def process_question_generation_job(
                 ],
             )
             db.add(question)
+            saved_questions.append(question)
 
         _set_job_status(db, job, "done")
         db.commit()
+
+        _index_questions(saved_questions, material_id, course_id)
 
     except Exception:
         db.rollback()

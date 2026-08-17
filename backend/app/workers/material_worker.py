@@ -90,6 +90,18 @@ def _index_material_chunks(
     vectors = embed_texts(texts)
     vector_store = get_vector_store()
     vector_store.ensure_collections()
+
+    # Xử lý lại material sẽ tạo bộ chunk mới với ID mới: xoá vector cũ trước
+    # khi upsert, nếu không retrieval sẽ trả về chunk mồ côi của lần chạy trước.
+    delete_material_chunks = getattr(vector_store, "delete_material_chunks", None)
+    if callable(delete_material_chunks):
+        try:
+            delete_material_chunks(cast(int, material.id))
+        except Exception as exc:
+            logger.warning(
+                "Không xoá được vector cũ của material %s: %s", material.id, exc
+            )
+
     vector_store.upsert_material_chunks(chunk_vectors, vectors)
 
 

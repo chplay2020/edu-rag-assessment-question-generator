@@ -1,3 +1,10 @@
+"""Phân loại/chuẩn hoá Bloom level và độ khó (T043, T044).
+
+Dùng luật từ khoá thay vì gọi LLM: chạy tức thì, không tốn quota, và trong
+pipeline nó chỉ đóng vai trò "lưới an toàn" - chỉnh lại nhãn khi LLM trả về
+giá trị ngoài danh mục, chứ không ghi đè nhãn hợp lệ do LLM đưa ra.
+"""
+
 from typing import Literal, TypeAlias
 
 
@@ -29,6 +36,43 @@ _BLOOM_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("understand", ("giải thích", "mô tả", "tóm tắt", "hiểu", "explain", "describe", "summarize")),
     ("remember", ("là gì", "nêu", "liệt kê", "định nghĩa", "what is", "define", "list")),
 ]
+
+# Ánh xạ các biến thể mà LLM hay trả về sai chính tả/khác ngôn ngữ.
+_BLOOM_ALIASES: dict[str, str] = {
+    "recall": "remember",
+    "knowledge": "remember",
+    "memorize": "remember",
+    "nhớ": "remember",
+    "comprehend": "understand",
+    "comprehension": "understand",
+    "hiểu": "understand",
+    "application": "apply",
+    "vận dụng": "apply",
+    "analysis": "analyze",
+    "analyse": "analyze",
+    "phân tích": "analyze",
+    "evaluation": "evaluate",
+    "đánh giá": "evaluate",
+    "synthesis": "create",
+    "creating": "create",
+    "sáng tạo": "create",
+}
+
+_DIFFICULTY_ALIASES: dict[str, str] = {
+    "dễ": "easy",
+    "de": "easy",
+    "low": "easy",
+    "beginner": "easy",
+    "trung bình": "medium",
+    "normal": "medium",
+    "moderate": "medium",
+    "intermediate": "medium",
+    "khó": "hard",
+    "kho": "hard",
+    "high": "hard",
+    "difficult": "hard",
+    "advanced": "hard",
+}
 
 
 def normalize_bloom_level(value: str | None) -> str | None:
@@ -68,11 +112,52 @@ def classify_difficulty(question_text: str, bloom_level: str | None = None) -> s
     return "easy"
 
 
+def coerce_bloom_level(value: str | None, question_text: str = "") -> str:
+    """Đưa mọi giá trị về đúng danh mục Bloom, suy luận nếu cần."""
+    normalized = normalize_bloom_level(value)
+    if normalized:
+        return normalized
+    if value:
+        alias = _BLOOM_ALIASES.get(value.strip().lower())
+        if alias:
+            return alias
+    return classify_bloom_level(question_text)
+
+
+def coerce_difficulty(
+    value: str | None,
+    question_text: str = "",
+    bloom_level: str | None = None,
+) -> str:
+    normalized = normalize_difficulty(value)
+    if normalized:
+        return normalized
+    if value:
+        alias = _DIFFICULTY_ALIASES.get(value.strip().lower())
+        if alias:
+            return alias
+    return classify_difficulty(question_text, bloom_level)
+
+
+def refine_labels(
+    question_text: str,
+    *,
+    difficulty: str | None,
+    bloom_level: str | None,
+) -> tuple[str, str]:
+    """Trả về `(difficulty, bloom_level)` luôn nằm trong danh mục hợp lệ."""
+    bloom = coerce_bloom_level(bloom_level, question_text)
+    return coerce_difficulty(difficulty, question_text, bloom), bloom
+
+
 __all__ = [
     "BLOOM_LEVELS",
     "DIFFICULTY_LEVELS",
     "classify_bloom_level",
     "classify_difficulty",
+    "coerce_bloom_level",
+    "coerce_difficulty",
     "normalize_bloom_level",
     "normalize_difficulty",
+    "refine_labels",
 ]

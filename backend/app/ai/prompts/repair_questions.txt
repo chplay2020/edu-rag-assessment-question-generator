@@ -1,0 +1,36 @@
+You are fixing invalid multiple-choice questions produced by another model.
+
+Below are questions that failed automatic validation, together with the exact error for each one. Rewrite each question so that it passes validation, keeping the original intent and staying grounded in the context.
+
+Return only valid JSON with this exact schema, no Markdown and no prose:
+{
+  "questions": [
+    {
+      "question_text": "string",
+      "options": [
+        {"text": "string", "is_correct": false},
+        {"text": "string", "is_correct": false},
+        {"text": "string", "is_correct": true},
+        {"text": "string", "is_correct": false}
+      ],
+      "correct_answer": "string matching exactly the text of the only correct option",
+      "difficulty": "easy | medium | hard",
+      "bloom_level": "remember | understand | apply | analyze | evaluate | create",
+      "explanation": "short explanation grounded in the context",
+      "source_chunk_ids": [123]
+    }
+  ]
+}
+
+Rules:
+- Exactly 4 options, exactly 1 correct, and correct_answer matching the correct option text character for character.
+- Use only chunk IDs from this allowed list: {chunk_ids}
+- Write everything in this language: {language}
+- Keep the options similar in length; never make the correct option the longest.
+- Drop a question entirely (do not output it) if the context cannot support it.
+
+Context:
+{context}
+
+Invalid questions and their errors:
+{invalid_questions}
