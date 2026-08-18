@@ -12,7 +12,7 @@ from app.ai.validation import question_validator  # noqa: F401  (điểm mock c�
 from app.ai.vector_store.qdrant_store import QuestionVector, get_vector_store
 from app.core.database import SessionLocal
 from app.models.material import Job, Material
-from app.models.question import Option, Question
+from app.models.question import Option, Question, QuestionValidationResult
 
 
 logger = logging.getLogger(__name__)
@@ -151,6 +151,34 @@ def process_question_generation_job(
                     for option in generated_question.options
                 ],
             )
+            
+            validation_results = []
+            if candidate.validation:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="rule_based",
+                        score=candidate.validation.scores,
+                        warnings=candidate.validation.warnings,
+                    )
+                )
+            if candidate.judge:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="llm_judge",
+                        score=candidate.judge.scores,
+                        warnings=candidate.judge.warnings,
+                    )
+                )
+            if candidate.notes:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="pipeline",
+                        score={},
+                        warnings=candidate.notes,
+                    )
+                )
+            setattr(question, "validation_results", validation_results)
+
             db.add(question)
             saved_questions.append(question)
 
