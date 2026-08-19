@@ -50,6 +50,7 @@ class GenerationOutcome:
     context_chunks: list[Any] = field(default_factory=list)
     dropped: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    ai_logs: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def questions(self) -> list[GeneratedQuestion]:
@@ -166,6 +167,7 @@ def generate_questions_for_material(
         bloom_level=bloom_level,
         language=language,
     )
+    outcome.ai_logs.extend(batch.logs)
 
     # 3. Refine nhãn + 4. validate bằng luật
     refined = [_refine(question) for question in batch.questions]

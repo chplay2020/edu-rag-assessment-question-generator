@@ -19,6 +19,7 @@ class LLMResponse:
     output_tokens: int | None = None
     finish_reason: str | None = None
     attempts: int = 1
+    latency_ms: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

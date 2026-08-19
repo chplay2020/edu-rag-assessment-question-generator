@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func, JSON, Float
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 
@@ -21,9 +21,20 @@ class AiLog(Base):
     __tablename__ = "ai_logs"
 
     id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True)
     action = Column(String, nullable=False) # generate_question, extract_text...
     prompt = Column(Text)
     response = Column(Text)
     model_name = Column(String)
-    tokens_used = Column(Integer)
+    prompt_tokens = Column(Integer)
+    output_tokens = Column(Integer)
+    total_tokens = Column(Integer)
+    latency_ms = Column(Integer)
+    error = Column(Text, nullable=True)
+    cost_estimate = Column(Float)
+    prompt_version = Column(String)
+    generation_config = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    job = relationship("Job", back_populates="ai_logs")
