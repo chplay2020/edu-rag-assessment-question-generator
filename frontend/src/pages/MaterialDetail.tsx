@@ -11,8 +11,11 @@ import {
   ArrowLeft,
   Gear,
   CaretRight,
-} 
-from '@phosphor-icons/react';
+  CheckCircle,
+  X,
+  ArrowsClockwise,
+  Sparkle,
+} from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
