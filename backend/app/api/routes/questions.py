@@ -6,6 +6,7 @@ from app.models.material import Material
 from app.models.question import Question, Option, Review
 from app.schemas.question_schema import QuestionCreate, QuestionUpdate, QuestionResponse, ReviewCreate, ReviewResponse
 from app.services import course_service
+from app.services.question_validation_service import revalidate_question
 
 router = APIRouter()
 
@@ -159,8 +160,23 @@ def update_question(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Trạng thái câu hỏi không hợp lệ."
         )
+    
+    # Handle options update
+    if "options" in update_data:
+        # Clear existing options
+        for opt in question.options:
+            db.delete(opt)
+        question.options = []
+        # Add new options
+        new_options = [Option(content=opt["content"], is_correct=opt["is_correct"]) for opt in update_data["options"]]
+        question.options.extend(new_options)
+        del update_data["options"]
+
     for field, value in update_data.items():
         setattr(question, field, value)
+
+    # Re-validate question
+    revalidate_question(db, question)
 
     db.add(question)
     db.commit()
