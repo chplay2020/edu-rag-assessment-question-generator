@@ -502,6 +502,8 @@ export const MaterialDetail: React.FC = () => {
                 <CheckCircle size={18} />
                 <span>Đã xử lý</span>
               </button>
+            )}
+
             {material.status === 'processed' || material.status === 'ready' || material.status === 'done' || material.status === 'completed' ? (
               <button
                 className="md-btn-process"

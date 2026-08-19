@@ -24,6 +24,21 @@ class Question(Base):
     job = relationship("Job", back_populates="questions")
     options = relationship("Option", back_populates="question", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="question", cascade="all, delete-orphan")
+    validation_results = relationship("QuestionValidationResult", back_populates="question", cascade="all, delete-orphan")
+
+
+class QuestionValidationResult(Base):
+    __tablename__ = "question_validation_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    validator_type = Column(String, nullable=False)
+    score = Column(JSON, nullable=True)
+    warnings = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    question = relationship("Question", back_populates="validation_results")
 
 
 class Option(Base):
