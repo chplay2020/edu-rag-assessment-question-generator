@@ -1,0 +1,51 @@
+.rab-actions {
+  display: flex;
+  gap: 12px;
+}
+.rab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.rab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.rab-btn-reject {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+.rab-btn-reject:hover:not(:disabled) {
+  background-color: #fecaca;
+}
+.rab-btn-approve {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+.rab-btn-approve:hover:not(:disabled) {
+  background-color: #bbf7d0;
+}
+.rab-confirm-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.rab-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.rab-btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+.rab-btn-secondary {
+  background-color: #e9ecef;
+  color: #333;
+}

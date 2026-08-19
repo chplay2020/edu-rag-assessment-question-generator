@@ -9,6 +9,7 @@ import { CourseMaterials } from './pages/CourseMaterials';
 import { MaterialDetail } from './pages/MaterialDetail';
 import { GenerateQuestions } from './pages/GenerateQuestions';
 import { JobResult } from './pages/JobResult';
+import { ReviewDashboard } from './pages/ReviewDashboard';
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
         <Route element={<AuthGuard />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/questions" element={<div style={{ padding: '32px 32px 40px 32px' }}><h2>Ngân hàng câu hỏi (Đang phát triển)</h2></div>} />
+            <Route path="/questions" element={<ReviewDashboard />} />
             <Route path="/courses" element={<Courses />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/materials" element={<CourseMaterials />} />
