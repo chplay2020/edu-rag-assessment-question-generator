@@ -66,6 +66,12 @@ def _score(match: Any) -> float:
     return float(getattr(match, "score", 0.0))
 
 
+def _match_id(match: Any) -> Any:
+    if isinstance(match, dict):
+        return match.get("id")
+    return getattr(match, "id", None)
+
+
 def find_near_duplicates_in_batch(
     question_texts: Sequence[str],
     *,
@@ -100,6 +106,7 @@ def detect_duplicate_question(
     *,
     material_id: int | None = None,
     course_id: int | None = None,
+    exclude_question_id: int | None = None,
     threshold: float | None = None,
     top_k: int = 5,
 ) -> DuplicateCheckResult:
@@ -138,6 +145,9 @@ def detect_duplicate_question(
         )
 
     matches_list = list(matches or [])
+    if exclude_question_id is not None:
+        matches_list = [m for m in matches_list if _match_id(m) != exclude_question_id]
+        
     is_duplicate = any(_score(match) >= limit for match in matches_list)
     return DuplicateCheckResult(is_duplicate=is_duplicate, matches=matches_list)
 

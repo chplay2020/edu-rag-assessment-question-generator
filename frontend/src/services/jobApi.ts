@@ -29,6 +29,13 @@ export interface Option {
   is_correct: boolean;
 }
 
+export interface QuestionValidationResultResponse {
+  id: number;
+  validator_type: string;
+  score?: Record<string, number>;
+  warnings?: string[];
+}
+
 export interface QuestionResponse {
   id: number;
   job_id: number;
@@ -41,6 +48,7 @@ export interface QuestionResponse {
   source_chunk_ids: number[];
   status: string;
   created_at: string;
+  validation_results?: QuestionValidationResultResponse[];
 }
 
 /**

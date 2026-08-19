@@ -255,3 +255,58 @@
     gap: 16px;
   }
 }
+
+/* Validation Styles */
+.jr-card-has-warnings {
+  border-color: #fca5a5; /* Red 300 for clearer warning */
+  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06);
+}
+
+.jr-badge-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jr-score-high {
+  background-color: #d1fae5; /* Emerald 100 */
+  color: #065f46; /* Emerald 800 */
+}
+
+.jr-score-medium {
+  background-color: #fef3c7; /* Amber 100 */
+  color: #92400e; /* Amber 800 */
+}
+
+.jr-score-low {
+  background-color: #fee2e2; /* Red 100 */
+  color: #991b1b; /* Red 800 */
+}
+
+.jr-warnings-box {
+  background-color: #fef2f2; /* Red 50 */
+  border: 1px solid #fecaca; /* Red 200 */
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.jr-warnings-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b91c1c; /* Red 700 */
+  margin-bottom: 8px;
+}
+
+.jr-warnings-list {
+  margin: 0;
+  padding-left: 24px;
+  color: #b91c1c; /* Red 700 */
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.jr-warnings-list li {
+  margin-bottom: 4px;
+}
