@@ -65,9 +65,30 @@ export const GenerateQuestions: React.FC = () => {
     try {
       const job = await createQuestionGenerationJob(mId, config);
       navigate(`/courses/${cId}/materials/${mId}/jobs/${job.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi khi tạo job sinh câu hỏi:', err);
-      setError(err.response?.data?.detail || err.message || 'Có lỗi xảy ra khi bắt đầu sinh câu hỏi.');
+      const axiosErr = err as {
+        response?: { data?: { detail?: unknown }; status?: number };
+        message?: string;
+      };
+      const detail = axiosErr?.response?.data?.detail;
+      const httpStatus = axiosErr?.response?.status;
+
+      let msg: string;
+      if (typeof detail === 'string' && detail) {
+        msg = detail;
+      } else if (httpStatus === 404) {
+        msg = 'Không tìm thấy tài liệu hoặc bạn không có quyền truy cập.';
+      } else if (httpStatus === 409) {
+        msg = 'Tài liệu chưa được xử lý. Vui lòng xử lý tài liệu trước khi sinh câu hỏi.';
+      } else if (httpStatus === 422) {
+        msg = 'Dữ liệu gửi lên không hợp lệ. Vui lòng kiểm tra lại các tham số.';
+      } else if (httpStatus && httpStatus >= 500) {
+        msg = 'Lỗi máy chủ khi khởi tạo sinh câu hỏi. Vui lòng thử lại sau ít phút.';
+      } else {
+        msg = 'Có lỗi xảy ra khi bắt đầu sinh câu hỏi. Vui lòng thử lại.';
+      }
+      setError(msg);
       setIsSubmitting(false);
     }
   };

@@ -11,8 +11,11 @@ import {
   ArrowLeft,
   Gear,
   CaretRight,
-} 
-from '@phosphor-icons/react';
+  CheckCircle,
+  ArrowsClockwise,
+  Sparkle,
+  X,
+} from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { fetchCourseById, getCachedCourseById, type Course } from '../services/courseApi';
 import {
@@ -502,6 +505,9 @@ export const MaterialDetail: React.FC = () => {
                 <CheckCircle size={18} />
                 <span>Đã xử lý</span>
               </button>
+            )}
+
+            {/* Nút tạo câu hỏi */}
             {material.status === 'processed' || material.status === 'ready' || material.status === 'done' || material.status === 'completed' ? (
               <button
                 className="md-btn-process"
