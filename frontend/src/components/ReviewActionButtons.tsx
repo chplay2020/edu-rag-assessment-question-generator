@@ -7,9 +7,10 @@ interface Props {
   questionId: number;
   currentStatus: string;
   onSuccess: () => void;
+  isEn?: boolean;
 }
 
-export const ReviewActionButtons: React.FC<Props> = ({ questionId, currentStatus, onSuccess }) => {
+export const ReviewActionButtons: React.FC<Props> = ({ questionId, currentStatus, onSuccess, isEn }) => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState<'approved' | 'rejected' | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -35,14 +36,14 @@ export const ReviewActionButtons: React.FC<Props> = ({ questionId, currentStatus
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <input 
           type="text" 
-          placeholder={`Lý do ${showConfirm === 'approved' ? 'duyệt' : 'từ chối'}...`} 
+          placeholder={isEn ? `Reason to ${showConfirm === 'approved' ? 'approve' : 'reject'}...` : `Lý do ${showConfirm === 'approved' ? 'duyệt' : 'từ chối'}...`} 
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
           className="jr-form-select"
           style={{ width: '250px', padding: '6px 12px', height: '32px' }}
         />
-        <button className="jr-btn-primary" onClick={handleAction} disabled={loading}>Xác nhận</button>
-        <button className="jr-btn-secondary" onClick={() => setShowConfirm(null)} disabled={loading}>Hủy</button>
+        <button className="jr-btn-primary" onClick={handleAction} disabled={loading}>{isEn ? 'Confirm' : 'Xác nhận'}</button>
+        <button className="jr-btn-secondary" onClick={() => setShowConfirm(null)} disabled={loading}>{isEn ? 'Cancel' : 'Hủy'}</button>
       </div>
     );
   }
@@ -54,14 +55,14 @@ export const ReviewActionButtons: React.FC<Props> = ({ questionId, currentStatus
         onClick={() => setShowConfirm('approved')}
         disabled={currentStatus === 'approved'}
       >
-        <Check size={14} /> Duyệt
+        <Check size={14} /> {isEn ? 'Approve' : 'Duyệt'}
       </button>
       <button 
         className="jr-btn-reject" 
         onClick={() => setShowConfirm('rejected')}
         disabled={currentStatus === 'rejected'}
       >
-        <X size={14} /> Từ chối
+        <X size={14} /> {isEn ? 'Reject' : 'Từ chối'}
       </button>
     </div>
   );

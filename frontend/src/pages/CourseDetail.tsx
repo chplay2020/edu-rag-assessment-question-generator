@@ -90,16 +90,25 @@ export const CourseDetail: React.FC = () => {
     }
   }, [courseId, id, navigate]);
 
+  const [questionsCount, setQuestionsCount] = useState<number | null>(null);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // fetch real materials count when course id changes
+  // fetch real materials and questions count when course id changes
   useEffect(() => {
     if (!id) return;
     getMaterialsByCourse(Number(id))
       .then((list) => setMaterialsCount(list.length))
       .catch(() => setMaterialsCount(null));
+
+    // Fetch question bank count for this course
+    import('../services/questionBankApi').then(({ getQuestionBank }) => {
+      getQuestionBank({ course_id: Number(id) })
+        .then((list) => setQuestionsCount(list.length))
+        .catch(() => setQuestionsCount(null));
+    });
   }, [id]);
 
   const handleOpenEditModal = () => {
@@ -310,15 +319,21 @@ export const CourseDetail: React.FC = () => {
               </div>
               <div>
                 <h3 className="section-card-title">Câu hỏi luyện tập</h3>
-                <p className="section-card-count">{course.questionsCount} câu hỏi</p>
+                <p className="section-card-count">
+                  {questionsCount === null ? '—' : `${questionsCount} câu hỏi`}
+                </p>
               </div>
-              <button className="btn-section-action disabled-questions" disabled title="Sẽ hoàn thiện trong task Question Bank">
+              <button
+                className="btn-section-action btn-section-materials-active"
+                onClick={() => navigate(`/question-bank?course_id=${id}`)}
+                title="Xem câu hỏi đã duyệt của môn học"
+              >
                 <ArrowSquareOut size={14} weight="bold" />
                 Xem câu hỏi
               </button>
             </div>
             <div className="section-card-placeholder">
-              <p>Câu hỏi thuộc môn học sẽ được hiển thị sau khi hoàn thành <strong>Question Bank</strong>.</p>
+              <p>Xem tất cả câu hỏi đã được duyệt thuộc môn học này trong <strong>Ngân hàng câu hỏi</strong>.</p>
             </div>
           </div>
 

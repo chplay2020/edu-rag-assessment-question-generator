@@ -17,6 +17,8 @@ import {
 } from '@phosphor-icons/react';
 import { CourseFormModal, type CourseFormPayload } from '../components/courses/CourseFormModal';
 import { fetchCourses, createCourse, updateCourse, deleteCourse, type Course } from '../services/courseApi';
+import { getMaterialsByCourse } from '../services/materialApi';
+import { getQuestionBank } from '../services/questionBankApi';
 import './Courses.css';
 
 export const Courses: React.FC = () => {
@@ -85,6 +87,23 @@ export const Courses: React.FC = () => {
     try {
       const apiCourses = await fetchCourses();
       setCourses(apiCourses);
+
+      // Fetch actual counts asynchronously for each course
+      apiCourses.forEach(async (course) => {
+        try {
+          const [mats, questions] = await Promise.all([
+            getMaterialsByCourse(course.id).catch(() => []),
+            getQuestionBank({ course_id: course.id }).catch(() => [])
+          ]);
+          setCourses(prev => prev.map(c =>
+            c.id === course.id
+              ? { ...c, materialsCount: mats.length, questionsCount: questions.length }
+              : c
+          ));
+        } catch (e) {
+
+        }
+      });
     } catch (err: any) {
       console.error('[T015] fetchCourses failed:', err);
       if (err.response?.status === 401) {
@@ -385,7 +404,7 @@ export const Courses: React.FC = () => {
                             >
                               <DotsThreeVertical size={20} weight="bold" />
                             </button>
-                            
+
                             {activeDropdownId === course.id && (
                               <div className={`course-card-dropdown-menu dropdown-${dropdownPlacement}`}>
                                 <button
@@ -497,7 +516,7 @@ export const Courses: React.FC = () => {
                         >
                           <DotsThreeVertical size={20} weight="bold" />
                         </button>
-                        
+
                         {activeDropdownId === course.id && (
                           <div className={`course-card-dropdown-menu dropdown-${dropdownPlacement}`}>
                             <button
@@ -622,7 +641,7 @@ export const Courses: React.FC = () => {
               <p style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#475569', lineHeight: 1.5 }}>
                 Môn học <strong>{courseToDelete?.code} - {courseToDelete?.title}</strong> và toàn bộ tài liệu liên quan sẽ bị xóa khỏi hệ thống. Hành động này không thể phục hồi.
               </p>
-              
+
               {deleteError && (
                 <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626', color: '#991b1b', fontSize: '0.9rem', borderRadius: '4px' }}>
                   {deleteError}
@@ -630,20 +649,20 @@ export const Courses: React.FC = () => {
               )}
 
               <div className="modal-footer" style={{ display: 'flex', gap: '12px', padding: 0, borderTop: 'none', backgroundColor: 'transparent', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
+                <button
+                  type="button"
+                  className="btn-secondary"
                   style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569' }}
-                  onClick={() => setIsDeleteModalOpen(false)} 
+                  onClick={() => setIsDeleteModalOpen(false)}
                   disabled={isDeleting}
                 >
                   Hủy
                 </button>
-                <button 
-                  type="button" 
-                  className="btn-primary" 
+                <button
+                  type="button"
+                  className="btn-primary"
                   style={{ padding: '10px 20px', borderRadius: '10px', backgroundColor: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}
-                  onClick={handleDeleteCourse} 
+                  onClick={handleDeleteCourse}
                   disabled={isDeleting}
                 >
                   <Trash size={16} weight="bold" />
