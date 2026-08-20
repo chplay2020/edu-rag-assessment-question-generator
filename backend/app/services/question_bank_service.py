@@ -1,14 +1,34 @@
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, Sequence
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.models.question import Question
+from app.models.course import Course
+from app.models.user import User
 
 APPROVED_STATUS = "approved"
+
+
+def _base_approved_query(db: Session):
+    """Query cơ sở: chỉ câu hỏi có status='approved', course chưa bị xóa."""
+    return (
+        db.query(Question)
+        .join(Course, Course.id == Question.course_id)
+        .filter(Question.status == APPROVED_STATUS)
+        .filter(Course.is_deleted == False)  # noqa: E712
+    )
+
+
+def _apply_ownership_filter(query, current_user: User):
+    if current_user.role == "admin":
+        return query
+    return query.filter(Course.created_by == current_user.id)
 
 
 def get_question_bank(
     db: Session,
     *,
+    current_user: User,
     course_id: Optional[int] = None,
     difficulty: Optional[str] = None,
     bloom_level: Optional[str] = None,
@@ -16,12 +36,9 @@ def get_question_bank(
     skip: int = 0,
     limit: int = 20,
 ) -> List[Question]:
-    """
-    Lấy danh sách câu hỏi đã được duyệt (status='approved').
-    Các filter đều optional, có thể kết hợp.
-    Sắp xếp theo created_at giảm dần (mới nhất trước).
-    """
-    query = db.query(Question).filter(Question.status == APPROVED_STATUS)
+
+    query = _base_approved_query(db)
+    query = _apply_ownership_filter(query, current_user)
 
     if course_id is not None:
         query = query.filter(Question.course_id == course_id)
@@ -42,3 +59,38 @@ def get_question_bank(
         .limit(limit)
         .all()
     )
+
+
+def get_exportable_questions(
+    db: Session,
+    *,
+    current_user: User,
+    question_ids: Sequence[int],
+) -> List[Question]:
+
+    if not question_ids:
+        return []
+
+    unique_ids = list(set(question_ids))
+
+    query = _base_approved_query(db)
+    query = _apply_ownership_filter(query, current_user)
+    query = query.filter(Question.id.in_(unique_ids))
+
+    found: List[Question] = query.all()
+    found_ids = {q.id for q in found}
+    invalid_ids = sorted(set(unique_ids) - found_ids)
+
+    if invalid_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": (
+                    "Một hoặc nhiều câu hỏi không đủ điều kiện export "
+                    "(không tồn tại, chưa được duyệt, hoặc không thuộc môn học của bạn)."
+                ),
+                "invalid_question_ids": invalid_ids,
+            },
+        )
+
+    return found

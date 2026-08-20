@@ -3,10 +3,12 @@ from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_active_lecturer
+from app.models.user import User
 from app.schemas.question_schema import QuestionResponse
 from app.services import question_bank_service
 
 router = APIRouter()
+
 
 @router.get(
     "/bank",
@@ -14,12 +16,13 @@ router = APIRouter()
     summary="Question Bank – Danh sách câu hỏi đã duyệt",
     description=(
         "Trả về danh sách câu hỏi có status='approved'. "
+        "Lecturer chỉ thấy câu hỏi thuộc course do chính họ tạo; admin thấy tất cả. "
         "Hỗ trợ filter theo course_id, difficulty, bloom_level, question_type và phân trang."
     ),
-    dependencies=[Depends(get_current_active_lecturer)],
 )
 def get_question_bank(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_lecturer),
     course_id: Optional[int] = Query(default=None, description="Lọc theo môn học"),
     difficulty: Optional[str] = Query(default=None, description="easy | medium | hard"),
     bloom_level: Optional[str] = Query(default=None, description="Bloom taxonomy level"),
@@ -30,6 +33,7 @@ def get_question_bank(
     """Lấy danh sách câu hỏi đã được duyệt (Question Bank)."""
     return question_bank_service.get_question_bank(
         db=db,
+        current_user=current_user,
         course_id=course_id,
         difficulty=difficulty,
         bloom_level=bloom_level,

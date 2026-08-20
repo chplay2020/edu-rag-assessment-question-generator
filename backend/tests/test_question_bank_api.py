@@ -37,41 +37,55 @@ def db(db_session_factory):
     finally:
         session.close()
 
-def _seed_base(db) -> dict:
-    """Tạo user, course, material cơ bản. Trả dict có user_id, course_id, material_id."""
+# Helpers
+
+def _make_user(db, *, email: str, role: str = "lecturer") -> User:
     user = User(
-        email="lecturer@test.com",
+        email=email,
         hashed_password="x",
-        full_name="Lecturer",
-        role="lecturer",
+        full_name=email.split("@")[0],
+        role=role,
         is_active=True,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+    return user
 
+
+def _make_course(db, *, created_by: int, code: str = "C-001", title: str = "Môn học") -> Course:
     course = Course(
-        title="Toán học",
-        code="MATH-001",
+        title=title,
+        code=code,
         description="",
-        created_by=user.id,
+        created_by=created_by,
         is_deleted=False,
     )
     db.add(course)
     db.commit()
     db.refresh(course)
+    return course
 
-    material = Material(
+
+def _make_material(db, *, course_id: int, uploaded_by: int) -> Material:
+    m = Material(
         title="Chương 1",
         file_path="/tmp/ch1.txt",
         status="processed",
-        course_id=course.id,
-        uploaded_by=user.id,
+        course_id=course_id,
+        uploaded_by=uploaded_by,
     )
-    db.add(material)
+    db.add(m)
     db.commit()
-    db.refresh(material)
+    db.refresh(m)
+    return m
 
+
+def _seed_base(db) -> dict:
+    """Tạo user, course, material cơ bản. Trả dict có user_id, course_id, material_id."""
+    user = _make_user(db, email="lecturer@test.com")
+    course = _make_course(db, created_by=user.id, code="MATH-001", title="Toán học")
+    material = _make_material(db, course_id=course.id, uploaded_by=user.id)
     return {"user_id": user.id, "course_id": course.id, "material_id": material.id}
 
 
@@ -109,7 +123,7 @@ def _qkw(ids: dict) -> dict:
     return {"material_id": ids["material_id"], "course_id": ids["course_id"]}
 
 
-def _make_app(db_session_factory, *, user_id: int, user_role: str = "lecturer") -> FastAPI:
+def _make_app(db_session_factory, *, user_id: int) -> FastAPI:
     """Tạo FastAPI test app với dependency overrides cho question_bank router."""
     app = FastAPI()
 
@@ -122,7 +136,7 @@ def _make_app(db_session_factory, *, user_id: int, user_role: str = "lecturer") 
         try:
             yield session
         finally:
-            pass  
+            pass
 
     def override_active_lecturer():
         return session.query(User).filter(User.id == user_id).first()
@@ -131,6 +145,8 @@ def _make_app(db_session_factory, *, user_id: int, user_role: str = "lecturer") 
     app.dependency_overrides[get_current_active_lecturer] = override_active_lecturer
 
     return app
+
+# ─── T057 – Các test Question Bank cơ bản ────────────────────────────────────
 
 def test_bank_returns_only_approved(db, db_session_factory):
     ids = _seed_base(db)
@@ -167,27 +183,8 @@ def test_bank_excludes_draft_and_rejected(db, db_session_factory):
 def test_bank_filter_by_course_id(db, db_session_factory):
     ids = _seed_base(db)
 
-    course2 = Course(
-        title="Vật lý",
-        code="PHY-001",
-        description="",
-        created_by=ids["user_id"],
-        is_deleted=False,
-    )
-    db.add(course2)
-    db.commit()
-    db.refresh(course2)
-
-    material2 = Material(
-        title="Chương VL",
-        file_path="/tmp/vl.txt",
-        status="processed",
-        course_id=course2.id,
-        uploaded_by=ids["user_id"],
-    )
-    db.add(material2)
-    db.commit()
-    db.refresh(material2)
+    course2 = _make_course(db, created_by=ids["user_id"], code="PHY-001", title="Vật lý")
+    material2 = _make_material(db, course_id=course2.id, uploaded_by=ids["user_id"])
 
     _make_question(db, material_id=ids["material_id"], course_id=ids["course_id"], status="approved", content="Q course1")
     _make_question(db, material_id=material2.id, course_id=course2.id, status="approved", content="Q course2")
@@ -317,3 +314,186 @@ def test_bank_ordered_newest_first(db, db_session_factory):
 
     data = resp.json()
     assert data[0]["id"] == q2.id, "Câu mới nhất phải ở đầu danh sách"
+
+# Ownership isolation 
+
+def test_bank_lecturer_cannot_see_other_course(db, db_session_factory):
+    """
+    T059: Lecturer A không thấy câu hỏi của course do Lecturer B tạo.
+    """
+    user_a = _make_user(db, email="a@test.com")
+    user_b = _make_user(db, email="b@test.com")
+
+    course_a = _make_course(db, created_by=user_a.id, code="CA-001", title="Course A")
+    course_b = _make_course(db, created_by=user_b.id, code="CB-001", title="Course B")
+    mat_a = _make_material(db, course_id=course_a.id, uploaded_by=user_a.id)
+    mat_b = _make_material(db, course_id=course_b.id, uploaded_by=user_b.id)
+
+    _make_question(db, material_id=mat_a.id, course_id=course_a.id, status="approved", content="Q in A")
+    _make_question(db, material_id=mat_b.id, course_id=course_b.id, status="approved", content="Q in B")
+
+    # User A gọi API
+    app = _make_app(db_session_factory, user_id=user_a.id)
+    with TestClient(app) as client:
+        resp = client.get("/questions/bank")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1, f"Lecturer A phải chỉ thấy 1 câu hỏi của mình, nhưng thấy {len(data)}"
+    assert data[0]["content"] == "Q in A"
+    assert data[0]["course_id"] == course_a.id
+
+
+def test_bank_admin_sees_all_courses(db, db_session_factory):
+    """
+    T059: Admin thấy câu hỏi approved từ tất cả các course.
+    """
+    admin = _make_user(db, email="admin@test.com", role="admin")
+    lect_a = _make_user(db, email="la@test.com")
+    lect_b = _make_user(db, email="lb@test.com")
+
+    course_a = _make_course(db, created_by=lect_a.id, code="A-001", title="Course A")
+    course_b = _make_course(db, created_by=lect_b.id, code="B-001", title="Course B")
+    mat_a = _make_material(db, course_id=course_a.id, uploaded_by=lect_a.id)
+    mat_b = _make_material(db, course_id=course_b.id, uploaded_by=lect_b.id)
+
+    _make_question(db, material_id=mat_a.id, course_id=course_a.id, status="approved", content="Q A1")
+    _make_question(db, material_id=mat_b.id, course_id=course_b.id, status="approved", content="Q B1")
+    _make_question(db, material_id=mat_b.id, course_id=course_b.id, status="draft", content="Q B draft")
+
+    app = _make_app(db_session_factory, user_id=admin.id)
+    with TestClient(app) as client:
+        resp = client.get("/questions/bank")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2, "Admin phải thấy 2 câu approved từ 2 course khác nhau"
+    statuses = {d["status"] for d in data}
+    assert statuses == {"approved"}, "Admin chỉ thấy câu approved dù thấy nhiều course"
+
+
+def test_bank_filters_dont_expose_other_lecturer_questions(db, db_session_factory):
+    """
+    T059: Filter difficulty/bloom không làm lộ câu hỏi của lecturer khác.
+    """
+    user_a = _make_user(db, email="fa@test.com")
+    user_b = _make_user(db, email="fb@test.com")
+
+    course_a = _make_course(db, created_by=user_a.id, code="FA-001", title="FA")
+    course_b = _make_course(db, created_by=user_b.id, code="FB-001", title="FB")
+    mat_a = _make_material(db, course_id=course_a.id, uploaded_by=user_a.id)
+    mat_b = _make_material(db, course_id=course_b.id, uploaded_by=user_b.id)
+
+    # Cả 2 đều có câu approved difficulty=hard
+    _make_question(db, material_id=mat_a.id, course_id=course_a.id, status="approved", difficulty="hard", content="A hard")
+    _make_question(db, material_id=mat_b.id, course_id=course_b.id, status="approved", difficulty="hard", content="B hard")
+
+    # User A lọc theo difficulty=hard → chỉ thấy câu của mình
+    app = _make_app(db_session_factory, user_id=user_a.id)
+    with TestClient(app) as client:
+        resp = client.get("/questions/bank?difficulty=hard")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["content"] == "A hard"
+
+# Export helper (get_exportable_questions)
+
+def test_exportable_returns_approved_ids(db):
+    """get_exportable_questions trả về câu approved của đúng user."""
+    from app.services.question_bank_service import get_exportable_questions
+
+    user = _make_user(db, email="exp@test.com")
+    course = _make_course(db, created_by=user.id, code="EXP-001", title="Export Course")
+    mat = _make_material(db, course_id=course.id, uploaded_by=user.id)
+
+    q1 = _make_question(db, material_id=mat.id, course_id=course.id, status="approved", content="Exp Q1")
+    q2 = _make_question(db, material_id=mat.id, course_id=course.id, status="approved", content="Exp Q2")
+
+    result = get_exportable_questions(db, current_user=user, question_ids=[q1.id, q2.id])
+    assert len(result) == 2
+    for q in result:
+        assert q.status == "approved"
+
+
+def test_exportable_rejects_draft_ids(db):
+    """get_exportable_questions raise HTTP 422 nếu có câu draft trong danh sách."""
+    from fastapi import HTTPException
+    from app.services.question_bank_service import get_exportable_questions
+
+    user = _make_user(db, email="exp2@test.com")
+    course = _make_course(db, created_by=user.id, code="EXP-002", title="Exp2")
+    mat = _make_material(db, course_id=course.id, uploaded_by=user.id)
+
+    approved = _make_question(db, material_id=mat.id, course_id=course.id, status="approved", content="OK")
+    draft = _make_question(db, material_id=mat.id, course_id=course.id, status="draft", content="Draft")
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_exportable_questions(db, current_user=user, question_ids=[approved.id, draft.id])
+
+    assert exc_info.value.status_code == 422
+    detail = exc_info.value.detail
+    assert draft.id in detail["invalid_question_ids"]
+    assert approved.id not in detail["invalid_question_ids"]
+
+
+def test_exportable_rejects_rejected_ids(db):
+    """get_exportable_questions raise HTTP 422 nếu có câu rejected."""
+    from fastapi import HTTPException
+    from app.services.question_bank_service import get_exportable_questions
+
+    user = _make_user(db, email="exp3@test.com")
+    course = _make_course(db, created_by=user.id, code="EXP-003", title="Exp3")
+    mat = _make_material(db, course_id=course.id, uploaded_by=user.id)
+
+    rejected = _make_question(db, material_id=mat.id, course_id=course.id, status="rejected", content="Rejected")
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_exportable_questions(db, current_user=user, question_ids=[rejected.id])
+
+    assert exc_info.value.status_code == 422
+    assert rejected.id in exc_info.value.detail["invalid_question_ids"]
+
+
+def test_exportable_rejects_other_lecturer_ids(db):
+    """get_exportable_questions không cho phép export câu của lecturer khác."""
+    from fastapi import HTTPException
+    from app.services.question_bank_service import get_exportable_questions
+
+    user_a = _make_user(db, email="oa@test.com")
+    user_b = _make_user(db, email="ob@test.com")
+
+    course_b = _make_course(db, created_by=user_b.id, code="OB-001", title="Course B")
+    mat_b = _make_material(db, course_id=course_b.id, uploaded_by=user_b.id)
+    q_b = _make_question(db, material_id=mat_b.id, course_id=course_b.id, status="approved", content="B's Q")
+
+    # User A cố export câu của B → phải bị từ chối
+    with pytest.raises(HTTPException) as exc_info:
+        get_exportable_questions(db, current_user=user_a, question_ids=[q_b.id])
+
+    assert exc_info.value.status_code == 422
+    assert q_b.id in exc_info.value.detail["invalid_question_ids"]
+
+
+def test_exportable_empty_list(db):
+    """get_exportable_questions với list rỗng trả về list rỗng, không lỗi."""
+    from app.services.question_bank_service import get_exportable_questions
+
+    user = _make_user(db, email="empty@test.com")
+    result = get_exportable_questions(db, current_user=user, question_ids=[])
+    assert result == []
+
+
+def test_exportable_nonexistent_id_raises(db):
+    """get_exportable_questions raise 422 nếu ID không tồn tại."""
+    from fastapi import HTTPException
+    from app.services.question_bank_service import get_exportable_questions
+
+    user = _make_user(db, email="ne@test.com")
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_exportable_questions(db, current_user=user, question_ids=[99999])
+
+    assert exc_info.value.status_code == 422
+    assert 99999 in exc_info.value.detail["invalid_question_ids"]
