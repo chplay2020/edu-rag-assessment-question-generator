@@ -61,11 +61,14 @@ def get_question_bank(
     )
 
 
+from sqlalchemy.orm import selectinload, joinedload
+
 def get_exportable_questions(
     db: Session,
     *,
     current_user: User,
     question_ids: Sequence[int],
+    with_relations: bool = False,
 ) -> List[Question]:
 
     if not question_ids:
@@ -76,6 +79,9 @@ def get_exportable_questions(
     query = _base_approved_query(db)
     query = _apply_ownership_filter(query, current_user)
     query = query.filter(Question.id.in_(unique_ids))
+    
+    if with_relations:
+        query = query.options(selectinload(Question.options), joinedload(Question.material))
 
     found: List[Question] = query.all()
     found_ids = {q.id for q in found}
