@@ -4,8 +4,6 @@
 
 Task T058 xây dựng trang **Ngân hàng câu hỏi** (`/question-bank`) – nơi giảng viên có thể tra cứu và chọn các câu hỏi **đã được duyệt** (status = `approved`) để chuẩn bị cho tính năng xuất đề thi (T061/T063).
 
-Trang này **khác hoàn toàn** với `/questions` (T054–T056):
-
 | Trang | Route | Mục đích |
 |---|---|---|
 | Duyệt câu hỏi | `/questions` | Xem, chỉnh sửa, duyệt / từ chối câu hỏi |

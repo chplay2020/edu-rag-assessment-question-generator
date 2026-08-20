@@ -6,10 +6,11 @@ class Export(Base):
     __tablename__ = "exports"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=True)
     exported_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     file_path = Column(String, nullable=False)
     format = Column(String, default="excel")
+    question_ids = Column(JSON, nullable=False, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

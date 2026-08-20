@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import {
   CheckCircle,
   MagnifyingGlass,
-  Funnel,
   Export,
   Lightbulb,
   CaretDown,
@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import { getQuestionBank } from '../services/questionBankApi';
 import { fetchCourses, type Course } from '../services/courseApi';
+import { exportExcel, formatApiErrorDetail } from '../services/exportApi';
 import type { QuestionResponse } from '../services/jobApi';
 import filterIcon from '../assets/filter_icon.png';
 import './QuestionBank.css';
@@ -43,6 +44,11 @@ const isEnglishContent = (text: string) => {
 
 // Component
 
+interface ToastState {
+  type: 'success' | 'error';
+  message: string;
+}
+
 export const QuestionBank: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -58,6 +64,22 @@ export const QuestionBank: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Export State
+  const [isExporting, setIsExporting] = useState(false);
+  const exportInFlightRef = useRef(false);
+
+  // Toast State
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((type: 'success' | 'error', message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ type, message });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4000);
+  }, []);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -136,6 +158,73 @@ export const QuestionBank: React.FC = () => {
     setSelectedIds(next);
   };
 
+  const handleExportExcel = async () => {
+    if (exportInFlightRef.current || selectedIds.size === 0) return;
+
+    let objectUrl: string | null = null;
+    let downloadAnchor: HTMLAnchorElement | null = null;
+    let anchorAppended = false;
+
+    try {
+      exportInFlightRef.current = true;
+      setIsExporting(true);
+
+      const { blob, filename } = await exportExcel(Array.from(selectedIds));
+
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        throw new Error('File rỗng hoặc dữ liệu trả về không hợp lệ.');
+      }
+
+      const type = blob.type.toLowerCase();
+      if (type.includes('application/json') || type.startsWith('text/')) {
+        throw new Error('Dữ liệu trả về bị lỗi (định dạng không phải là file tải xuống).');
+      }
+
+      objectUrl = URL.createObjectURL(blob);
+      downloadAnchor = document.createElement('a');
+      downloadAnchor.href = objectUrl;
+      downloadAnchor.download = filename;
+      downloadAnchor.style.display = 'none';
+
+      document.body.appendChild(downloadAnchor);
+      anchorAppended = true;
+      downloadAnchor.click();
+
+      showToast('success', 'Xuất file Excel thành công.');
+      setSelectedIds(new Set());
+    } catch (err: unknown) {
+      let errMsg = 'Không thể xuất file Excel. Vui lòng thử lại.';
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (status === 401 || status === 403) {
+          errMsg = 'Hết phiên đăng nhập hoặc bạn không có quyền thao tác.';
+        } else if (status === 500) {
+          errMsg = 'Lỗi hệ thống khi tạo file. Vui lòng thử lại sau.';
+        } else if (err.response?.data instanceof Blob) {
+          try {
+            const text = await err.response.data.text();
+            const json = JSON.parse(text);
+            errMsg = formatApiErrorDetail(json.detail);
+          } catch {
+            // fallback
+          }
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast('error', errMsg);
+    } finally {
+      if (anchorAppended && downloadAnchor && document.body.contains(downloadAnchor)) {
+        document.body.removeChild(downloadAnchor);
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+      exportInFlightRef.current = false;
+      setIsExporting(false);
+    }
+  };
+
   // Render
   const selectedCourse = courses.find((c) => String(c.id) === courseId);
 
@@ -152,17 +241,18 @@ export const QuestionBank: React.FC = () => {
           </p>
         </div>
         <div className="qb-header-actions">
-          {/* Export button – disabled until T061/T063 */}
-          <div
-            className="qb-tooltip-wrapper"
-            title="Xuất Excel sẽ khả dụng sau khi hoàn thành T061 và T063."
+          {/* Export button */}
+          <button
+            className="qb-btn-export"
+            disabled={!someSelected || isExporting}
+            id="btn-export-excel"
+            aria-busy={isExporting}
+            onClick={handleExportExcel}
           >
-            <button className="qb-btn-export" disabled id="btn-export-excel">
-              <Export size={16} />
-              Xuất Excel
-              {someSelected && <span className="qb-export-badge">{selectedIds.size}</span>}
-            </button>
-          </div>
+            {isExporting ? <CircleNotch size={16} className="cm-spin" /> : <Export size={16} />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+            {!isExporting && someSelected && <span className="qb-export-badge">{selectedIds.size}</span>}
+          </button>
         </div>
       </div>
 
@@ -180,8 +270,8 @@ export const QuestionBank: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button 
-              className="qb-search-clear" 
+            <button
+              className="qb-search-clear"
               onClick={() => setSearchQuery('')}
               title="Xóa tìm kiếm"
             >
@@ -396,6 +486,23 @@ export const QuestionBank: React.FC = () => {
           <Link to="/courses" className="jr-btn-back">
             <ArrowLeft size={16} /> Quay lại danh sách môn học
           </Link>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`md-toast md-toast-${toast.type}`} role="alert" aria-live="polite">
+          {toast.type === 'success'
+            ? <CheckCircle size={20} weight="fill" className="md-toast-icon" />
+            : <WarningCircle size={20} weight="fill" className="md-toast-icon" />
+          }
+          <span>{toast.message}</span>
+          <button
+            className="md-toast-close"
+            onClick={() => setToast(null)}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>

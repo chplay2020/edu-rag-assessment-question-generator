@@ -1,8 +1,20 @@
+import os
 import io
-from typing import List
+import uuid
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import List, Tuple
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
+
 from app.models.question import Question
+from app.models.system import Export
+from app.core.storage import get_export_dir
+
+logger = logging.getLogger(__name__)
 
 def _sanitize_for_excel(text: str) -> str:
     """Ngăn chặn Excel Formula Injection"""
@@ -13,7 +25,7 @@ def _sanitize_for_excel(text: str) -> str:
         return f"'{text}"
     return text
 
-def generate_excel_workbook(questions: List[Question]) -> io.BytesIO:
+def _generate_excel_workbook(questions: List[Question]) -> openpyxl.Workbook:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Câu hỏi"
@@ -110,7 +122,52 @@ def generate_excel_workbook(questions: List[Question]) -> io.BytesIO:
         adjusted_width = min((max_length + 2), 50)
         ws.column_dimensions[column].width = adjusted_width
 
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output
+    return wb
+
+def export_questions_to_excel(db: Session, questions: List[Question], user_id: int, question_ids: List[int]) -> Tuple[Path, str]:
+    course_ids = {q.course_id for q in questions if q.course_id is not None}
+    final_course_id = course_ids.pop() if len(course_ids) == 1 else None
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex
+    filename = f"questions_export_{timestamp}_{unique_id}.xlsx"
+    
+    export_dir = get_export_dir()
+    os.makedirs(export_dir, exist_ok=True)
+    
+    final_path = export_dir / filename
+    temp_path = export_dir / f"{filename}.tmp"
+    
+    wb = _generate_excel_workbook(questions)
+    
+    try:
+        wb.save(temp_path)
+        os.replace(temp_path, final_path)
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        raise e
+        
+    try:
+        new_export = Export(
+            course_id=final_course_id,
+            exported_by=user_id,
+            file_path=filename,
+            format="xlsx",
+            question_ids=question_ids
+        )
+        db.add(new_export)
+        db.flush()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        try:
+            os.remove(final_path)
+        except Exception as cleanup_err:
+            logger.error(f"Failed to cleanup file {final_path} after DB error: {cleanup_err}")
+        raise e
+        
+    return final_path, filename
