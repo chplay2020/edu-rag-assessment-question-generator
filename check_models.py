@@ -3,7 +3,7 @@ import sys
 from google import genai
 from google.genai.errors import APIError
 
-key = "AQ.Ab8RN6LUj9BtiKXTX-zXdHLttZWQBRWSj0-jSD4zz83M7v25Ww"
+key = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 client = genai.Client(api_key=key)
 
 try:
