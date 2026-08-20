@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { CaretRight, Sparkle, CircleNotch, ArrowLeft } from '@phosphor-icons/react';
+import { CaretRight, Sparkle, CircleNotch, ArrowLeft, CaretDown } from '@phosphor-icons/react';
 import { getCachedCourseById, fetchCourseById, type Course } from '../services/courseApi';
 import { getCachedMaterialById, getMaterialById, type MaterialDetail } from '../services/materialApi';
 import { createQuestionGenerationJob, type JobConfig } from '../services/jobApi';
@@ -19,7 +19,7 @@ export const GenerateQuestions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Form state
-  const [numberOfQuestions, setNumberOfQuestions] = useState(5);
+  const [numberOfQuestions, setNumberOfQuestions] = useState<number | string>(5);
   const [difficulty, setDifficulty] = useState('medium');
   const [bloomLevel, setBloomLevel] = useState('');
   const [language, setLanguage] = useState('vi');
@@ -53,8 +53,15 @@ export const GenerateQuestions: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
+    const numQ = Number(numberOfQuestions);
+    if (!numQ || numQ < 1 || numQ > 50) {
+      setError('Vui lòng nhập số lượng câu hỏi hợp lệ (1-50).');
+      setIsSubmitting(false);
+      return;
+    }
+
     const config: JobConfig = {
-      number_of_questions: numberOfQuestions,
+      number_of_questions: numQ,
       difficulty,
       language,
       top_k: 5,
@@ -168,53 +175,62 @@ export const GenerateQuestions: React.FC = () => {
                 min="1"
                 max="50"
                 value={numberOfQuestions}
-                onChange={(e) => setNumberOfQuestions(Number(e.target.value))}
+                onChange={(e) => setNumberOfQuestions(e.target.value === '' ? '' : Number(e.target.value))}
                 required
               />
             </div>
             
             <div className="gq-form-group">
               <label htmlFor="difficulty">Độ khó</label>
-              <select
-                id="difficulty"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-              >
-                <option value="easy">Dễ</option>
-                <option value="medium">Trung bình</option>
-                <option value="hard">Khó</option>
-              </select>
+              <div className="gq-select-wrapper">
+                <select
+                  id="difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                >
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
+                </select>
+                <CaretDown size={14} className="gq-select-icon" />
+              </div>
             </div>
           </div>
 
           <div className="gq-form-row">
             <div className="gq-form-group">
               <label htmlFor="bloomLevel">Mức độ nhận thức (Bloom)</label>
-              <select
-                id="bloomLevel"
-                value={bloomLevel}
-                onChange={(e) => setBloomLevel(e.target.value)}
-              >
-                <option value="">Tất cả mức độ</option>
-                <option value="remember">Nhớ (Remember)</option>
-                <option value="understand">Hiểu (Understand)</option>
-                <option value="apply">Vận dụng (Apply)</option>
-                <option value="analyze">Phân tích (Analyze)</option>
-                <option value="evaluate">Đánh giá (Evaluate)</option>
-                <option value="create">Sáng tạo (Create)</option>
-              </select>
+              <div className="gq-select-wrapper">
+                <select
+                  id="bloomLevel"
+                  value={bloomLevel}
+                  onChange={(e) => setBloomLevel(e.target.value)}
+                >
+                  <option value="">Tất cả mức độ</option>
+                  <option value="remember">Nhớ (Remember)</option>
+                  <option value="understand">Hiểu (Understand)</option>
+                  <option value="apply">Vận dụng (Apply)</option>
+                  <option value="analyze">Phân tích (Analyze)</option>
+                  <option value="evaluate">Đánh giá (Evaluate)</option>
+                  <option value="create">Sáng tạo (Create)</option>
+                </select>
+                <CaretDown size={14} className="gq-select-icon" />
+              </div>
             </div>
             
             <div className="gq-form-group">
-              <label htmlFor="language">Ngôn ngữ</label>
-              <select
-                id="language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-              >
-                <option value="vi">Tiếng Việt</option>
-                <option value="en">Tiếng Anh</option>
-              </select>
+              <label htmlFor="language">Ngôn ngữ của câu hỏi</label>
+              <div className="gq-select-wrapper">
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  <option value="vi">Tiếng Việt</option>
+                  <option value="en">Tiếng Anh</option>
+                </select>
+                <CaretDown size={14} className="gq-select-icon" />
+              </div>
             </div>
           </div>
 
@@ -231,9 +247,13 @@ export const GenerateQuestions: React.FC = () => {
           </div>
 
           <div className="gq-form-actions">
-            <Link to={`/courses/${cId}/materials/${mId}`} className="gq-btn-cancel">
+            <button
+              type="button"
+              className="gq-btn-cancel"
+              onClick={() => navigate(-1)}
+            >
               Hủy
-            </Link>
+            </button>
             <button
               type="submit"
               className="gq-btn-submit"
