@@ -186,6 +186,7 @@ class GeminiLLMProvider(BaseLLMProvider):
         client = get_gemini_client()  # raise LLMProviderError nếu thiếu key/package
         from google.genai import types  # type: ignore
 
+        start_time = time.perf_counter()
         last_error: Exception | None = None
         with_thinking = True
 
@@ -233,6 +234,7 @@ class GeminiLLMProvider(BaseLLMProvider):
                     output_tokens=output_tokens,
                     finish_reason=finish_reason,
                     attempts=attempt,
+                    latency_ms=int((time.perf_counter() - start_time) * 1000),
                 )
 
             last_error = LLMProviderError(

@@ -11,6 +11,7 @@ Cải tiến chính so với bản MVP:
 
 import logging
 import re
+import time
 import unicodedata
 from typing import Any
 
@@ -159,6 +160,7 @@ def generate_questions(
     collected: list[GeneratedQuestion] = []
     seen_texts: set[str] = set()
     parse_errors: list[str] = []
+    ai_logs: list[dict[str, Any]] = []
 
     for attempt in range(1, max_attempts + 1):
         remaining = number_of_questions - len(collected)
@@ -183,8 +185,56 @@ def generate_questions(
             seed=len(collected),
         )
 
-        raw_output = provider.generate_text(prompt)
-        questions, errors = parse_questions_lenient(raw_output)
+        start_time = time.perf_counter()
+        error_msg = None
+        
+        try:
+            raw_output = provider.generate(prompt)
+            latency_ms = raw_output.latency_ms
+            prompt_tokens = raw_output.prompt_tokens or 0
+            output_tokens = raw_output.output_tokens or 0
+            model_name = raw_output.model
+            response_text = raw_output.text
+        except Exception as exc:
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            error_msg = str(exc)
+            prompt_tokens = 0
+            output_tokens = 0
+            model_name = getattr(provider, "model_name", "unknown")
+            response_text = ""
+            
+        cost_estimate = 0.0
+        if "flash" in model_name:
+            cost_estimate = (prompt_tokens * 0.075 + output_tokens * 0.3) / 1000000.0
+        elif "pro" in model_name:
+            cost_estimate = (prompt_tokens * 1.25 + output_tokens * 5.0) / 1000000.0
+
+        ai_logs.append({
+            "action": "generate_mcq",
+            "prompt": prompt,
+            "response": response_text,
+            "model_name": model_name,
+            "prompt_tokens": prompt_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": prompt_tokens + output_tokens,
+            "latency_ms": latency_ms,
+            "error": error_msg,
+            "cost_estimate": cost_estimate,
+            "prompt_version": prompt_version(PROMPT_NAME),
+            "generation_config": {
+                "number_of_questions": remaining,
+                "difficulty": difficulty,
+                "bloom_level": bloom_level,
+                "language": language,
+                "provider": getattr(provider, "name", type(provider).__name__)
+            }
+        })
+
+        if error_msg:
+            parse_errors.append(f"LLM Error: {error_msg}")
+            break
+
+        questions, errors = parse_questions_lenient(response_text)
         parse_errors.extend(errors)
 
         added = 0
@@ -232,7 +282,7 @@ def generate_questions(
             material_id,
         )
 
-    return GeneratedQuestionBatch(questions=collected[:number_of_questions])
+    return GeneratedQuestionBatch(questions=collected[:number_of_questions], logs=ai_logs)
 
 
 __all__ = [

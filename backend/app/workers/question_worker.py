@@ -12,7 +12,8 @@ from app.ai.validation import question_validator  # noqa: F401  (điểm mock c�
 from app.ai.vector_store.qdrant_store import QuestionVector, get_vector_store
 from app.core.database import SessionLocal
 from app.models.material import Job, Material
-from app.models.question import Option, Question
+from app.models.question import Option, Question, QuestionValidationResult
+from app.models.system import AiLog
 
 
 logger = logging.getLogger(__name__)
@@ -151,8 +152,53 @@ def process_question_generation_job(
                     for option in generated_question.options
                 ],
             )
+            
+            validation_results = []
+            if candidate.validation:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="rule_based",
+                        score=candidate.validation.scores,
+                        warnings=candidate.validation.warnings,
+                    )
+                )
+            if candidate.judge:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="llm_judge",
+                        score=candidate.judge.scores,
+                        warnings=candidate.judge.warnings,
+                    )
+                )
+            if candidate.notes:
+                validation_results.append(
+                    QuestionValidationResult(
+                        validator_type="pipeline",
+                        score={},
+                        warnings=candidate.notes,
+                    )
+                )
+            setattr(question, "validation_results", validation_results)
+
             db.add(question)
             saved_questions.append(question)
+
+        for log_data in outcome.ai_logs:
+            db.add(AiLog(
+                job_id=job.id,
+                action=log_data.get("action", "generate_mcq"),
+                prompt=log_data.get("prompt"),
+                response=log_data.get("response"),
+                model_name=log_data.get("model_name"),
+                prompt_tokens=log_data.get("prompt_tokens"),
+                output_tokens=log_data.get("output_tokens"),
+                total_tokens=log_data.get("total_tokens"),
+                latency_ms=log_data.get("latency_ms"),
+                error=log_data.get("error"),
+                cost_estimate=log_data.get("cost_estimate"),
+                prompt_version=log_data.get("prompt_version"),
+                generation_config=log_data.get("generation_config")
+            ))
 
         _set_job_status(db, job, "done")
         db.commit()

@@ -144,15 +144,61 @@ export const JobResult: React.FC = () => {
           </div>
 
           <div className="jr-question-list">
-            {questions.map((q, index) => (
-              <div key={q.id} className="jr-question-card card-panel">
+            {questions.map((q, index) => {
+              const allWarnings: string[] = [];
+              const llmScores: Record<string, number> = {};
+              if (q.validation_results) {
+                q.validation_results.forEach(res => {
+                  if (res.warnings) allWarnings.push(...res.warnings);
+                  if (res.validator_type === 'llm_judge' && res.score) {
+                    Object.assign(llmScores, res.score);
+                  }
+                });
+              }
+
+              const getScoreClass = (score: number) => {
+                if (score >= 0.8) return 'jr-score-high';
+                if (score >= 0.5) return 'jr-score-medium';
+                return 'jr-score-low';
+              };
+
+              const formatScore = (score: number) => Math.round(score * 100) + '%';
+
+              return (
+              <div key={q.id} className={`jr-question-card card-panel ${allWarnings.length > 0 ? 'jr-card-has-warnings' : ''}`}>
                 <div className="jr-question-header">
                   <span className="jr-question-number">Câu {index + 1}</span>
                   <div className="jr-question-badges">
                     <span className="jr-badge jr-badge-difficulty">Độ khó: {q.difficulty}</span>
                     <span className="jr-badge jr-badge-bloom">Bloom: {q.bloom_level}</span>
+                    {Object.entries(llmScores).map(([key, value]) => {
+                        let label = key;
+                        if (key === 'grounding') label = 'Relevance';
+                        if (key === 'clarity') label = 'Clarity';
+                        if (key === 'assessment_quality') label = 'Correctness';
+                        
+                        return (
+                          <span key={key} className={`jr-badge jr-badge-score ${getScoreClass(value)}`} title={`${key}: ${value}`}>
+                            {label}: {formatScore(value)}
+                          </span>
+                        );
+                    })}
                   </div>
                 </div>
+                
+                {allWarnings.length > 0 && (
+                  <div className="jr-warnings-box">
+                    <div className="jr-warnings-header">
+                      <WarningCircle size={18} weight="fill" />
+                      <strong>Cảnh báo chất lượng ({allWarnings.length}):</strong>
+                    </div>
+                    <ul className="jr-warnings-list">
+                      {allWarnings.map((warn, wIdx) => (
+                        <li key={wIdx}>{warn}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 
                 <p className="jr-question-content">{q.content}</p>
                 
@@ -187,7 +233,8 @@ export const JobResult: React.FC = () => {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

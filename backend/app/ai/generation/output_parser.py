@@ -133,6 +133,7 @@ class GeneratedQuestionBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     questions: list[GeneratedQuestion] = Field(default_factory=list)
+    logs: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def _strip_json_code_fence(raw_output: str) -> str:

@@ -13,6 +13,15 @@ class OptionResponse(OptionBase):
     class Config:
         from_attributes = True
 
+class QuestionValidationResultResponse(BaseModel):
+    id: int
+    validator_type: str
+    score: Optional[dict] = None
+    warnings: Optional[List[str]] = None
+
+    class Config:
+        from_attributes = True
+
 class QuestionBase(BaseModel):
     content: str
     difficulty: str = "medium"
@@ -35,6 +44,7 @@ class QuestionUpdate(BaseModel):
     explanation: Optional[str] = None
     source_chunk_ids: Optional[List[int]] = None
     status: Optional[str] = None
+    options: Optional[List[OptionBase]] = None
 
 class QuestionResponse(QuestionBase):
     id: int
@@ -44,6 +54,7 @@ class QuestionResponse(QuestionBase):
     status: str
     created_at: datetime
     options: List[OptionResponse] = Field(default_factory=list)
+    validation_results: List[QuestionValidationResultResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

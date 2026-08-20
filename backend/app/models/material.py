@@ -62,3 +62,4 @@ class Job(Base):
     # Relationships
     material = relationship("Material", back_populates="jobs")
     questions = relationship("Question", back_populates="job", cascade="all, delete-orphan")
+    ai_logs = relationship("AiLog", back_populates="job", cascade="all, delete-orphan")

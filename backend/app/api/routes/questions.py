@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Any, cast
+from typing import List, Any, cast, Optional
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user_id, get_current_user_role, get_current_active_lecturer
 from app.models.material import Material
 from app.models.question import Question, Option, Review
 from app.schemas.question_schema import QuestionCreate, QuestionUpdate, QuestionResponse, ReviewCreate, ReviewResponse
 from app.services import course_service
+from app.services.question_validation_service import revalidate_question
 
 router = APIRouter()
 
@@ -89,6 +90,40 @@ def get_questions_by_material(
         .all()
     )
 
+@router.get("", response_model=List[QuestionResponse], dependencies=[Depends(get_current_active_lecturer)])
+def get_all_questions(
+    course_id: Optional[int] = None,
+    job_id: Optional[int] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+    skip: int = 0,
+    limit: int = 50,
+) -> Any:
+    """Lấy danh sách tất cả câu hỏi (có filter)"""
+    query = db.query(Question)
+    
+    if course_id is not None:
+        course = course_service.get_course(db=db, course_id=course_id, current_user_id=current_user_id, current_user_role=current_user_role)
+        if not course:
+            raise HTTPException(status_code=403, detail="Không có quyền truy cập khóa học này.")
+        query = query.filter(Question.course_id == course_id)
+    else:
+        # Lọc các khóa học mà người dùng được phép xem
+        if current_user_role != "admin":
+            allowed_courses = course_service.list_courses(db=db, current_user_id=current_user_id, current_user_role=current_user_role, limit=1000)
+            allowed_course_ids = [c.id for c in allowed_courses]
+            query = query.filter(Question.course_id.in_(allowed_course_ids))
+
+    if job_id is not None:
+        query = query.filter(Question.job_id == job_id)
+        
+    if status is not None:
+        query = query.filter(Question.status == status)
+        
+    return query.order_by(Question.created_at.desc()).offset(skip).limit(limit).all()
+
 @router.post("/", response_model=QuestionResponse, dependencies=[Depends(get_current_active_lecturer)])
 def create_question(
     data: QuestionCreate,
@@ -154,13 +189,33 @@ def update_question(
         current_user_role=current_user_role,
     )
     update_data = data.model_dump(exclude_unset=True)
-    if "status" in update_data and update_data["status"] not in QUESTION_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Trạng thái câu hỏi không hợp lệ."
-        )
+    if "status" in update_data:
+        if update_data["status"] not in CREATE_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Chỉ được phép cập nhật trạng thái thành draft hoặc review_required thông qua API này."
+            )
+    else:
+        # Tự động downgrade trạng thái nếu câu hỏi bị thay đổi
+        if question.status in REVIEW_STATUSES:
+            update_data["status"] = "draft"
+
+    # Handle options update
+    if "options" in update_data:
+        # Clear existing options
+        for opt in question.options:
+            db.delete(opt)
+        question.options = []
+        # Add new options
+        new_options = [Option(content=opt["content"], is_correct=opt["is_correct"]) for opt in update_data["options"]]
+        question.options.extend(new_options)
+        del update_data["options"]
+
     for field, value in update_data.items():
         setattr(question, field, value)
+
+    # Re-validate question
+    revalidate_question(db, question)
 
     db.add(question)
     db.commit()
@@ -200,3 +255,24 @@ def review_question(
     db.commit()
     db.refresh(review)
     return review
+
+@router.get("/{question_id}/reviews", response_model=List[ReviewResponse], dependencies=[Depends(get_current_active_lecturer)])
+def get_question_reviews(
+    question_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+    current_user_role: str = Depends(get_current_user_role),
+) -> Any:
+    """Lấy lịch sử đánh giá câu hỏi"""
+    _get_question_with_access(
+        db=db,
+        question_id=question_id,
+        current_user_id=current_user_id,
+        current_user_role=current_user_role,
+    )
+    return (
+        db.query(Review)
+        .filter(Review.question_id == question_id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
