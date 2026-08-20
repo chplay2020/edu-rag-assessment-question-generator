@@ -20,4 +20,12 @@ def get_processed_dir() -> Path:
     return configured.resolve()
 
 
-__all__ = ["get_processed_dir"]
+def get_export_dir() -> Path:
+    """Return the configured export data directory."""
+    configured = Path(os.environ.get("EXPORT_DIR", "storage/exports"))
+    if not configured.is_absolute():
+        configured = BACKEND_DIR / configured
+    return configured.resolve()
+
+
+__all__ = ["get_processed_dir", "get_export_dir"]

@@ -30,6 +30,30 @@
   --color-badge-bg: rgba(79, 70, 229, 0.06);
   --color-badge-border: rgba(79, 70, 229, 0.12);
 
+  /* Semantic Status: Success */
+  --color-success: #059669;
+  --color-success-text: #065f46;
+  --color-success-bg: #d1fae5;
+  --color-success-border: #a7f3d0;
+
+  /* Semantic Status: Warning */
+  --color-warning: #d97706;
+  --color-warning-text: #92400e;
+  --color-warning-bg: #fef3c7;
+  --color-warning-border: rgba(245, 158, 11, 0.25);
+
+  /* Semantic Status: Danger */
+  --color-danger: #dc2626;
+  --color-danger-text: #991b1b;
+  --color-danger-bg: #fee2e2;
+  --color-danger-border: #fecaca;
+  --color-danger-subtle-bg: #fef2f2;
+  --color-danger-card-border: #fca5a5;
+
+  /* Neutral Muted surface */
+  --color-muted-bg: #f1f5f9;
+  --color-muted-text: #475569;
+
   /* Error / Failure Banner */
   --color-error-bg: #fef2f2;
   --color-error-border: #fecaca;

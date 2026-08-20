@@ -507,6 +507,7 @@ export const MaterialDetail: React.FC = () => {
               </button>
             )}
 
+            {/* Nút tạo câu hỏi */}
             {material.status === 'processed' || material.status === 'ready' || material.status === 'done' || material.status === 'completed' ? (
               <button
                 className="md-btn-process"
@@ -517,14 +518,14 @@ export const MaterialDetail: React.FC = () => {
                 <span>Tạo câu hỏi</span>
               </button>
             ) : (
-              <div className="md-tooltip-wrapper" title="Chức năng xử lý sẽ khả dụng sau khi tài liệu sẵn sàng.">
+              <div className="md-tooltip-wrapper" title="Cần xử lý tài liệu trước khi tạo câu hỏi">
                 <button
-                  className="md-btn-process"
+                  className="md-btn-process md-btn-disabled"
                   disabled
-                  aria-disabled="true"
+                  title="Cần xử lý tài liệu trước khi tạo câu hỏi"
                 >
-                  <Gear size={18} />
-                  <span>Xử lý tài liệu</span>
+                  <Sparkle size={18} />
+                  <span>Tạo câu hỏi</span>
                 </button>
               </div>
             )}

@@ -10,6 +10,7 @@ import { MaterialDetail } from './pages/MaterialDetail';
 import { GenerateQuestions } from './pages/GenerateQuestions';
 import { JobResult } from './pages/JobResult';
 import { ReviewDashboard } from './pages/ReviewDashboard';
+import { QuestionBank } from './pages/QuestionBank';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/questions" element={<ReviewDashboard />} />
+            <Route path="/question-bank" element={<QuestionBank />} />
             <Route path="/courses" element={<Courses />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/materials" element={<CourseMaterials />} />

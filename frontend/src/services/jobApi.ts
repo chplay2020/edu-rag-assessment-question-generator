@@ -74,3 +74,26 @@ export async function getJobQuestions(jobId: number): Promise<QuestionResponse[]
   const res = await apiClient.get<QuestionResponse[]>(`/jobs/${jobId}/questions`);
   return res.data;
 }
+
+/**
+ * Cập nhật nội dung câu hỏi 
+ */
+export async function updateQuestion(questionId: number, data: {
+  content?: string;
+  explanation?: string;
+  difficulty?: string;
+  bloom_level?: string;
+  options?: Array<{ id: number; content: string; is_correct: boolean }>;
+}): Promise<QuestionResponse> {
+  const res = await apiClient.put<QuestionResponse>(`/questions/${questionId}`, data);
+  return res.data;
+}
+
+/**
+ * Duyệt hoặc từ chối câu hỏi 
+ */
+export async function reviewQuestion(questionId: number, status: 'approved' | 'rejected'): Promise<any> {
+  const res = await apiClient.post(`/questions/${questionId}/review`, { status });
+  return res.data;
+}
+

@@ -76,6 +76,25 @@
   color: var(--color-text);
 }
 
+.gq-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gq-select-wrapper select {
+  width: 100%;
+  appearance: none;
+  padding-right: 32px;
+}
+
+.gq-select-icon {
+  position: absolute;
+  right: 12px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
 .gq-form-group input,
 .gq-form-group select,
 .gq-form-group textarea {
@@ -85,8 +104,14 @@
   font-size: 0.95rem;
   background-color: var(--color-background);
   color: var(--color-text);
-  transition: all 0.2s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   font-family: inherit;
+}
+
+.gq-form-group input:hover,
+.gq-form-group select:hover,
+.gq-form-group textarea:hover {
+  border-color: var(--color-border-hover);
 }
 
 .gq-form-group input:focus,
@@ -112,12 +137,13 @@
 }
 
 .gq-btn-cancel {
-  padding: 10px 20px;
+  padding: 8px 16px;
   border: 1px solid var(--color-border);
   background-color: transparent;
   color: var(--color-text);
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.875rem;
   text-decoration: none;
   transition: background-color 0.2s;
   display: inline-flex;
@@ -127,28 +153,42 @@
 
 .gq-btn-cancel:hover {
   background-color: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .gq-btn-submit {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 24px;
+  padding: 8px 20px;
   background-color: var(--color-primary);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .gq-btn-submit:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
+  background-color: var(--color-primary-hover);
+}
+
+.gq-btn-cancel:active,
+.gq-btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.gq-btn-cancel:focus-visible,
+.gq-btn-submit:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .gq-btn-submit:disabled {
-  background-color: var(--color-primary-light);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -167,3 +207,4 @@
     gap: 16px;
   }
 }
+

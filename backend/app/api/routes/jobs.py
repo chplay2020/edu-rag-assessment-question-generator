@@ -1,5 +1,6 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from typing import Annotated, Any, cast, List
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from typing import Annotated, Any, cast, List, Optional
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user_id, get_current_user_role, get_current_active_lecturer
 from app.models.material import Job
@@ -12,46 +13,61 @@ from app.workers.question_worker import process_question_generation_job
 router = APIRouter()
 
 
-@router.post("/material/{material_id}/generate-questions", dependencies=[Depends(get_current_active_lecturer)])
+class GenerateQuestionsRequest(BaseModel):
+    """Body schema cho endpoint sinh câu hỏi.
+    Frontend gửi JSON body với các field này.
+    """
+    query: Optional[str] = Field(default=None, description="Yêu cầu bổ sung hoặc phạm vi sinh câu hỏi")
+    number_of_questions: int = Field(default=5, ge=1, le=50, description="Số lượng câu hỏi cần sinh")
+    difficulty: str = Field(default="medium", description="Độ khó: easy | medium | hard")
+    bloom_level: Optional[str] = Field(default=None, description="Mức độ nhận thức Bloom")
+    language: str = Field(default="vi", description="Ngôn ngữ: vi | en")
+    top_k: int = Field(default=5, ge=1, le=20, description="Số lượng chunk retrieval")
+
+
+@router.post(
+    "/material/{material_id}/generate-questions",
+    response_model=JobResponse,
+    dependencies=[Depends(get_current_active_lecturer)],
+)
 def generate_questions_for_material(
     material_id: int,
+    body: GenerateQuestionsRequest,
     background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
     current_user_id: Annotated[int, Depends(get_current_user_id)],
     current_user_role: Annotated[str, Depends(get_current_user_role)],
-    query: str | None = None,
-    number_of_questions: int = Query(default=5, ge=1, le=50),
-    difficulty: str = "medium",
-    bloom_level: str | None = None,
-    language: str = "vi",
-    top_k: int = Query(default=5, ge=1, le=20),
-) -> dict[str, Any]:
-    """Tạo job sinh câu hỏi cho material đã processed."""
+) -> Any:
+    """Tạo job sinh câu hỏi cho material đã processed.
+
+    Nhận JSON body với các tham số sinh câu hỏi.
+    Trả về JobResponse (với id, status, ...) để frontend điều hướng đúng.
+    """
     job = question_generation_service.create_question_generation_job(
         db=db,
         material_id=material_id,
         current_user_id=current_user_id,
         current_user_role=current_user_role,
         config={
-            "query": query,
-            "number_of_questions": number_of_questions,
-            "difficulty": difficulty,
-            "bloom_level": bloom_level,
-            "language": language,
-            "top_k": top_k,
+            "query": body.query,
+            "number_of_questions": body.number_of_questions,
+            "difficulty": body.difficulty,
+            "bloom_level": body.bloom_level,
+            "language": body.language,
+            "top_k": body.top_k,
         }
     )
     background_tasks.add_task(
         process_question_generation_job,
         cast(int, job.id),
-        query=query,
-        number_of_questions=number_of_questions,
-        difficulty=difficulty,
-        bloom_level=bloom_level,
-        language=language,
-        top_k=top_k,
+        query=body.query,
+        number_of_questions=body.number_of_questions,
+        difficulty=body.difficulty,
+        bloom_level=body.bloom_level,
+        language=body.language,
+        top_k=body.top_k,
     )
-    return question_generation_service.job_summary(job)
+    return job
 
 
 @router.get("/{job_id}", response_model=JobResponse, dependencies=[Depends(get_current_active_lecturer)])

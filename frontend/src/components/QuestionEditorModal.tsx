@@ -6,6 +6,7 @@ import './QuestionEditorModal.css';
 
 interface Props {
   question: QuestionResponse;
+  isEn?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }

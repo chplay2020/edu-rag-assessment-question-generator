@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
 import logo from '../assets/Logo.png';
-import { House, BookBookmark, GraduationCap, SignOut, X } from '@phosphor-icons/react';
+import { House, BookBookmark, Archive, GraduationCap, SignOut, X } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const MainLayout: React.FC = () => {
@@ -57,7 +57,8 @@ export const MainLayout: React.FC = () => {
 
   const navItems = [
     { path: '/', label: 'Tổng quan', icon: House },
-    { path: '/questions', label: 'Ngân hàng câu hỏi', icon: BookBookmark },
+    { path: '/questions', label: 'Duyệt câu hỏi', icon: BookBookmark },
+    { path: '/question-bank', label: 'Ngân hàng câu hỏi', icon: Archive },
     { path: '/courses', label: 'Môn học', icon: GraduationCap },
   ];
 
