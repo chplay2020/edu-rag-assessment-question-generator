@@ -226,7 +226,7 @@ def generate_questions_for_material(
             )
             outcome.warnings.extend(duplicate_warnings)
             if is_duplicate:
-                notes.append("Có thể trùng với câu hỏi đã có trong ngân hàng câu hỏi.")
+                notes.append("Có thể trùng với câu hỏi đã duyệt trong ngân hàng.")
                 needs_review = True
 
         outcome.candidates.append(

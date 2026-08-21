@@ -23,10 +23,26 @@ class QuestionGenerationError(Exception):
     pass
 
 
-def _set_job_status(db: Session, job: Job, status: str) -> None:
+def _set_job_status(
+    db: Session, 
+    job: Job, 
+    status: str,
+    percent: float | None = None,
+    error_message: str | None = None,
+) -> None:
     job.status = status
+    if status == "running" and job.started_at is None:
+        job.started_at = datetime.now(timezone.utc)
+        
     if status in {"done", "failed"}:
         job.finished_at = datetime.now(timezone.utc)
+        job.percent = 100.0 if status == "done" else (percent if percent is not None else job.percent)
+    elif percent is not None:
+        job.percent = percent
+        
+    if error_message is not None:
+        job.error_message = error_message
+        
     db.add(job)
 
 
@@ -205,10 +221,10 @@ def process_question_generation_job(
 
         _index_questions(saved_questions, material_id, course_id)
 
-    except Exception:
+    except Exception as exc:
         db.rollback()
         if job is not None:
-            _set_job_status(db, job, "failed")
+            _set_job_status(db, job, "failed", error_message=str(exc))
             db.commit()
         raise
     finally:

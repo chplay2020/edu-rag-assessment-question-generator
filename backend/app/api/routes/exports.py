@@ -60,6 +60,48 @@ def export_questions_excel(
         )
 
 
+WORD_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+@router.post("/word")
+def export_questions_word(
+    request: ExportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_lecturer),
+):
+    try:
+        dedup_ids = list(dict.fromkeys(request.question_ids))
+        
+        questions = question_bank_service.get_exportable_questions(
+            db, 
+            current_user=current_user, 
+            question_ids=dedup_ids,
+            with_relations=True
+        )
+        
+        # Restore order
+        question_map = {q.id: q for q in questions}
+        ordered_questions = [question_map[qid] for qid in dedup_ids if qid in question_map]
+        
+        final_path, filename = export_service.export_questions_to_word(
+            db=db,
+            questions=ordered_questions,
+            user_id=current_user.id,
+            question_ids=dedup_ids
+        )
+        
+        return FileResponse(
+            path=final_path,
+            filename=filename,
+            media_type=WORD_MEDIA_TYPE,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Internal error during export Word: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Đã xảy ra lỗi hệ thống khi xuất file Word."
+        )
 @router.get("", response_model=ExportListResponse)
 def get_export_history(
     skip: int = Query(0, ge=0),
@@ -114,8 +156,10 @@ def download_export_file(
     if not target_path.exists():
         raise HTTPException(status_code=404, detail="Export not found")
         
+    media_type = WORD_MEDIA_TYPE if filename.endswith('.docx') else EXCEL_MEDIA_TYPE
+        
     return FileResponse(
         path=target_path,
         filename=filename,
-        media_type=EXCEL_MEDIA_TYPE,
+        media_type=media_type,
     )

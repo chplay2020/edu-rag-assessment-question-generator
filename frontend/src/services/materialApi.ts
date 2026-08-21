@@ -187,8 +187,11 @@ export interface JobResponse {
   material_id: number;
   task_type: string;
   status: string;
+  percent?: number;
   created_at: string;
+  started_at: string | null;
   finished_at: string | null;
+  error_message: string | null;
 }
 
 // lấy thông tin chi tiết tài liệu

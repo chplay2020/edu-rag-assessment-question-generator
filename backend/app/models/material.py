@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func, JSON, Float
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 # Tạm thời mock Vector type, sau này cài pgvector thì sẽ import từ pgvector.sqlalchemy
@@ -55,9 +55,12 @@ class Job(Base):
     material_id = Column(Integer, ForeignKey("materials.id", ondelete="CASCADE"), nullable=False)
     task_type = Column(String, nullable=False) # process_material, generate_questions
     status = Column(String, default="pending") # pending, running, done, failed
-    config = Column(JSON, nullable=True) # configurations for the job
+    config = Column(JSON, nullable=True) # cấu hình cho job
+    percent = Column(Float, default=0.0) # Tiến độ phần trăm của job (từ 0 đến 100)
+    error_message = Column(Text, nullable=True) # Thông báo lỗi nếu job thất bại
+    started_at = Column(DateTime(timezone=True), nullable=True) # Thời điểm bắt đầu chạy job
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    finished_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True) # Thời điểm kết thúc job
 
     # Relationships
     material = relationship("Material", back_populates="jobs")

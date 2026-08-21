@@ -1,272 +1,324 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { GraduationCap, FileArrowUp, FilePlus, Sparkle, Clock, ArrowUpRight, CheckCircle, Warning } from '@phosphor-icons/react';
+import { 
+  GraduationCap, 
+  FileArrowUp, 
+  Sparkle, 
+  CheckCircle, 
+  Warning, 
+  ArrowUpRight 
+} from '@phosphor-icons/react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+import { getDashboardSummary, type DashboardSummary } from '../services/dashboardApi';
+
+// Updated Color Palette based on design
+const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
+const STATUS_COLORS: Record<string, string> = {
+  'Đã duyệt': '#10b981', // emerald-500
+  'Từ chối': '#ef4444',  // red-500
+  'Chờ duyệt': '#f59e0b', // amber-500
+  'Bản nháp': '#4f46e5',  // indigo-600
+};
 
 export const Dashboard: React.FC = () => {
-  // Stagger animation variants
+  const [data, setData] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const result = await getDashboardSummary();
+        setData(result);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08
-      }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
   } as const;
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 30 } }
   } as const;
 
-  // Mockup data
-  const mockRecentSets = [
-    {
-      id: 1,
-      title: "Đề thi giữa kỳ - Lập trình Web nâng cao",
-      course: "Web nâng cao",
-      questionsCount: 40,
-      createdAt: "2 giờ trước",
-      status: "success",
-      statusLabel: "Hoàn thành"
-    },
-    {
-      id: 2,
-      title: "Trắc nghiệm ôn tập Chương 2 - RDBMS",
-      course: "Cơ sở dữ liệu",
-      questionsCount: 20,
-      createdAt: "Hôm qua",
-      status: "success",
-      statusLabel: "Hoàn thành"
-    },
-    {
-      id: 3,
-      title: "Bộ câu hỏi kiểm tra nhanh - AI & Machine Learning",
-      course: "Trí tuệ nhân tạo",
-      questionsCount: 15,
-      createdAt: "3 ngày trước",
-      status: "draft",
-      statusLabel: "Bản nháp"
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-zinc-500">Đang đồng bộ dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const hasActivity = true; // Set true để hiển thị ds
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-sm font-medium text-zinc-500">Không có dữ liệu hiển thị.</p>
+      </div>
+    );
+  }
+
+  const statusMap: Record<string, string> = {
+    'approved': 'Đã duyệt',
+    'rejected': 'Từ chối',
+    'draft': 'Bản nháp',
+    'review_required': 'Chờ duyệt'
+  };
+  const diffMap: Record<string, string> = {
+    'easy': 'Dễ',
+    'medium': 'Vừa',
+    'hard': 'Khó'
+  };
+
+  const chartStatus = data.questions_by_status?.length > 0 
+    ? data.questions_by_status.map(d => ({ ...d, name: statusMap[d.name] || d.name }))
+    : [{ name: 'Bản nháp', value: 10 }];
+
+  const chartDiff = data.questions_by_difficulty?.length > 0
+    ? data.questions_by_difficulty.map(d => ({ ...d, name: diffMap[d.name] || d.name }))
+    : [{ name: 'Vừa', value: 10 }];
+
+  const chartBloom = data.questions_by_bloom?.length > 0
+    ? data.questions_by_bloom
+    : [
+        { name: 'understand', value: 10 }
+      ];
 
   return (
     <motion.div
-      className="dashboard-container"
-      style={{ padding: '32px 32px 40px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}
+      className="p-6 md:p-8 lg:p-10 w-full mx-auto flex flex-col gap-8"
       variants={containerVariants}
-      initial={false}
+      initial="hidden"
       animate="show"
     >
-      {/* Dashboard Welcome Header */}
-      <motion.div className="dashboard-header" variants={itemVariants}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-text-main)', letterSpacing: '-0.02em', marginBottom: '6px' }}>
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Tổng quan
-        </h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-          Dưới đây là tình hình các môn học của bạn hôm nay.
+        </h1>
+        <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 max-w-2xl">
+          Thống kê tình hình tạo và duyệt câu hỏi của bạn.
         </p>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - 6 Columns */}
       <motion.div
-        className="dashboard-stats"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
         variants={containerVariants}
       >
-        {/* Stat 1 */}
-        <motion.div
-          className="card"
-          variants={itemVariants}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', overflow: 'hidden' }}
-        >
-          <div>
-            <h3 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-              Tổng số môn học
-            </h3>
-            <p style={{ fontSize: '2.5rem', fontWeight: 600, color: 'var(--color-text-main)', letterSpacing: '-0.04em', lineHeight: 1 }}>
-              12
-            </p>
-            <div style={{ marginTop: '16px', fontSize: '0.8rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-              <ArrowUpRight size={14} />
-              <span>+2 môn mới học kỳ này</span>
-            </div>
+        <StatCard 
+          title="Tài liệu" 
+          value={data.total_materials} 
+          icon={<FileArrowUp size={24} weight="regular" />} 
+          iconBgClass="bg-indigo-50"
+          iconColorClass="text-indigo-500"
+        />
+        <StatCard 
+          title="Tiến trình (Jobs)" 
+          value={data.total_jobs} 
+          icon={<ArrowUpRight size={24} weight="regular" />} 
+          iconBgClass="bg-cyan-50"
+          iconColorClass="text-cyan-500"
+        />
+        <StatCard 
+          title="Câu hỏi sinh ra" 
+          value={data.total_generated_questions} 
+          icon={<Sparkle size={24} weight="regular" />} 
+          iconBgClass="bg-purple-50"
+          iconColorClass="text-purple-500"
+        />
+        <StatCard 
+          title="Câu hỏi Đã duyệt" 
+          value={data.total_approved_questions} 
+          icon={<CheckCircle size={24} weight="regular" />} 
+          iconBgClass="bg-emerald-50"
+          iconColorClass="text-emerald-500"
+        />
+        <StatCard 
+          title="Câu hỏi Từ chối" 
+          value={data.total_rejected_questions} 
+          icon={<Warning size={24} weight="regular" />} 
+          iconBgClass="bg-amber-50"
+          iconColorClass="text-amber-500"
+        />
+        <StatCard 
+          title="Điểm AI TB" 
+          value={data.validation_avg_score} 
+          icon={<GraduationCap size={24} weight="regular" />} 
+          iconBgClass="bg-pink-50"
+          iconColorClass="text-pink-500"
+          isFloat 
+        />
+      </motion.div>
+
+      {/* Charts Grid - First Row (Pies) */}
+      <motion.div 
+        className="flex flex-col md:flex-row gap-5"
+        variants={containerVariants}
+      >
+        {/* Status Chart */}
+        <motion.div variants={itemVariants} className="w-full md:w-1/3 xl:w-1/4 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col">
+          <div className="mb-6">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Trạng thái câu hỏi</h3>
           </div>
-          <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(79, 70, 229, 0.08)', color: 'var(--color-primary)' }}>
-            <GraduationCap size={24} weight="duotone" />
+          <div className="flex-1 min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {chartStatus.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ color: '#18181b', fontSize: '14px', fontWeight: 500 }}
+                />
+                <Legend iconType="square" wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
 
-        {/* Stat 2 */}
-        <motion.div
-          className="card"
-          variants={itemVariants}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', overflow: 'hidden' }}
-        >
-          <div>
-            <h3 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-              Tài liệu đã tải lên
-            </h3>
-            <p style={{ fontSize: '2.5rem', fontWeight: 600, color: 'var(--color-text-main)', letterSpacing: '-0.04em', lineHeight: 1 }}>
-              48
-            </p>
-            <div style={{ marginTop: '16px', fontSize: '0.8rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-              <ArrowUpRight size={14} />
-              <span>+6 tài liệu tuần này</span>
-            </div>
+        {/* Difficulty Chart */}
+        <motion.div variants={itemVariants} className="w-full md:w-1/3 xl:w-1/4 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col">
+          <div className="mb-6">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Mức độ khó</h3>
           </div>
-          <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
-            <FileArrowUp size={24} weight="duotone" />
-          </div>
-        </motion.div>
-
-        {/* Stat 3 */}
-        <motion.div
-          className="card"
-          variants={itemVariants}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', overflow: 'hidden' }}
-        >
-          <div>
-            <h3 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-              Câu hỏi đã tạo
-            </h3>
-            <p style={{ fontSize: '2.5rem', fontWeight: 600, color: 'var(--color-text-main)', letterSpacing: '-0.04em', lineHeight: 1 }}>
-              1,204
-            </p>
-            <div style={{ marginTop: '16px', fontSize: '0.8rem', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-              <ArrowUpRight size={14} />
-              <span>+128 câu sinh trong 24h</span>
-            </div>
-          </div>
-          <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6' }}>
-            <Sparkle size={24} weight="duotone" />
+          <div className="flex-1 min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartDiff}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  dataKey="value"
+                  stroke="none"
+                  label
+                >
+                  {chartDiff.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend iconType="square" wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
       </motion.div>
 
-      {/* Recent Activity / Question Sets Section */}
-      <motion.div className="dashboard-recent card" variants={itemVariants} style={{ padding: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text-main)', letterSpacing: '-0.01em', margin: 0 }}>
-            Bộ câu hỏi gần đây
-          </h3>
-          {hasActivity && (
-            <button style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              border: 'none',
-              background: 'none',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}>
-              <span>Xem tất cả</span>
-              <ArrowUpRight size={16} />
-            </button>
-          )}
+      {/* Bloom Chart */}
+      <motion.div variants={itemVariants} className="w-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col">
+        <div className="mb-6">
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Thang đo Bloom</h3>
         </div>
-
-        {hasActivity ? (
-          /* Premium Table View */
-          <div style={{ overflowX: 'auto', margin: '0 -28px -28px', padding: '0 28px 28px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(226, 232, 240, 0.8)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tên bộ câu hỏi</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Môn học</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Số câu</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thời gian</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockRecentSets.map((set) => (
-                  <tr
-                    key={set.id}
-                    style={{
-                      borderBottom: '1px solid rgba(241, 245, 249, 0.8)',
-                      transition: 'background-color 0.2s ease',
-                      cursor: 'pointer'
-                    }}
-                    className="hover-row"
-                  >
-                    <td style={{ padding: '16px', fontWeight: 500, color: 'var(--color-text-main)', fontSize: '0.95rem' }}>{set.title}</td>
-                    <td style={{ padding: '16px', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>{set.course}</td>
-                    <td style={{ padding: '16px', color: 'var(--color-text-main)', fontWeight: 600, fontSize: '0.95rem' }}>{set.questionsCount}</td>
-                    <td style={{ padding: '16px', color: 'var(--color-text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Clock size={14} />
-                      <span>{set.createdAt}</span>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '4px 10px',
-                        borderRadius: '99px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        background: set.status === 'success' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                        color: set.status === 'success' ? '#10b981' : '#f59e0b'
-                      }}>
-                        {set.status === 'success' ? <CheckCircle size={12} weight="fill" /> : <Warning size={12} weight="fill" />}
-                        <span>{set.statusLabel}</span>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* Premium Illustrated Empty State */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', textAlign: 'center' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '24px',
-              background: 'rgba(241, 245, 249, 0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-              marginBottom: '20px'
-            }}>
-              <FilePlus size={40} weight="duotone" style={{ opacity: 0.7 }} />
-            </div>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '8px' }}>
-              Chưa có bộ câu hỏi nào được tạo
-            </h4>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: '380px', lineHeight: 1.5, marginBottom: '24px' }}>
-              Chưa có hoạt động gần đây. Hãy tải lên tài liệu môn học để bắt đầu tạo câu hỏi trắc nghiệm đánh giá tự động.
-            </p>
-            <button style={{
-              padding: '10px 20px',
-              borderRadius: '10px',
-              background: 'var(--color-primary)',
-              color: 'white',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.15)',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <Sparkle size={16} weight="fill" />
-              <span>Tạo bộ câu hỏi ngay</span>
-            </button>
-          </div>
-        )}
+        <div className="w-full h-[300px] mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartBloom} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 13, fill: '#71717a' }} 
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 13, fill: '#71717a' }} 
+              />
+              <RechartsTooltip 
+                cursor={{ fill: '#f4f4f5' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              />
+              <Bar 
+                dataKey="value" 
+                fill="#4f46e5" 
+                radius={[4, 4, 0, 0]}
+                barSize={120}
+                name="Số câu hỏi"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </motion.div>
+    </motion.div>
+  );
+};
+
+// Premium Stat Card
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  iconBgClass?: string;
+  iconColorClass?: string;
+  isFloat?: boolean;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ 
+  title, 
+  value, 
+  icon, 
+  iconBgClass = "bg-zinc-100 dark:bg-zinc-800",
+  iconColorClass = "text-zinc-600 dark:text-zinc-300",
+  isFloat = false 
+}) => {
+  const displayValue = isFloat ? Number(value).toFixed(1) : value.toLocaleString('en-US');
+  
+  return (
+    <motion.div
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+      className="flex flex-col p-4 md:p-5 min-h-[140px] justify-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm relative overflow-hidden group"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="text-[14px] font-medium text-zinc-600 dark:text-zinc-400">
+          {title}
+        </h3>
+        <div className={`p-2 rounded-xl ${iconBgClass} ${iconColorClass}`}>
+          {icon}
+        </div>
+      </div>
+      
+      <div className="flex items-baseline gap-3">
+        <p className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {displayValue}
+        </p>
+      </div>
     </motion.div>
   );
 };

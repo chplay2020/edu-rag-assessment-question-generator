@@ -129,6 +129,7 @@ def detect_duplicate_question(
             matches = search_questions(
                 query_vector=query_vector,
                 course_id=course_id,
+                status="approved",
                 top_k=top_k,
             )
         else:

@@ -324,8 +324,20 @@ export const JobResult: React.FC = () => {
       {isLoadingJob ? (
         <div className="jr-state-card">
           <CircleNotch size={48} weight="bold" className="cm-spin jr-primary-icon" />
-          <h2 className="jr-title">Đang sinh câu hỏi...</h2>
-          <p className="jr-subtitle">AI đang phân tích tài liệu và tạo câu hỏi. Quá trình này có thể mất vài phút.</p>
+          <h2 className="jr-title">
+            {job?.status === 'running' 
+              ? `Đang sinh câu hỏi (${Math.round(job.percent || 0)}%)` 
+              : 'Đang sinh câu hỏi...'}
+          </h2>
+          <p className="jr-subtitle">
+            AI đang phân tích tài liệu và tạo câu hỏi. Quá trình này có thể mất vài phút.
+          </p>
+          
+          {job?.started_at && (
+            <p className="jr-meta" style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              Bắt đầu lúc: {new Date(job.started_at).toLocaleTimeString('vi-VN')}
+            </p>
+          )}
         </div>
       ) : job?.status === 'failed' ? (
         <div className="jr-state-card">
