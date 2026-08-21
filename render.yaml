@@ -1,0 +1,61 @@
+﻿services:
+  - type: web
+    name: rag-backend
+    env: docker
+    dockerfilePath: ./docker/backend.Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rag-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rag-redis
+          property: connectionString
+      - key: QDRANT_HOST
+        value: "qdrant"
+      - key: SECRET_KEY
+        generateValue: true
+
+  - type: worker
+    name: rag-celery
+    env: docker
+    dockerfilePath: ./docker/backend.Dockerfile
+    dockerCommand: celery -A app.core.celery_app worker -l info
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rag-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rag-redis
+          property: connectionString
+
+  - type: redis
+    name: rag-redis
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: rag-frontend
+    env: docker
+    dockerfilePath: ./docker/frontend.Dockerfile
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: rag-backend
+          envVarKey: RENDER_EXTERNAL_URL
+
+databases:
+  - name: rag-db
+    databaseName: rag
+    user: postgres
+    plan: free

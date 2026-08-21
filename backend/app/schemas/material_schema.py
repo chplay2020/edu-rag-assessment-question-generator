@@ -29,6 +29,9 @@ class JobResponse(BaseModel):
     task_type: str
     status: str
     config: Optional[dict] = None
+    percent: Optional[float] = 0.0
+    error_message: Optional[str] = None
+    started_at: Optional[datetime] = None
     created_at: datetime
     finished_at: Optional[datetime] = None
 

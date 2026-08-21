@@ -16,8 +16,13 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
-    op.add_column('questions', sa.Column('job_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'questions', 'jobs', ['job_id'], ['id'], ondelete='CASCADE')
+    conn = op.get_bind()
+    from sqlalchemy.engine.reflection import Inspector
+    inspector = Inspector.from_engine(conn)
+    columns = [c['name'] for c in inspector.get_columns('questions')]
+    if 'job_id' not in columns:
+        op.add_column('questions', sa.Column('job_id', sa.Integer(), nullable=True))
+        op.create_foreign_key(None, 'questions', 'jobs', ['job_id'], ['id'], ondelete='CASCADE')
 
 def downgrade() -> None:
     op.drop_constraint(None, 'questions', type_='foreignkey')

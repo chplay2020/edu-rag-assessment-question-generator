@@ -39,12 +39,29 @@ def _latest_process_job(
     return query.first()
 
 
-def _set_job_status(db: Session, job: Job | None, status: str) -> None:
+def _set_job_status(
+    db: Session,
+    job: Job | None,
+    status: str,
+    percent: float | None = None,
+    error_message: str | None = None,
+) -> None:
     if not job:
         return
     job.status = status
+    
+    if status == "running" and job.started_at is None:
+        job.started_at = datetime.now(timezone.utc)
+        
     if status in {"done", "failed"}:
         job.finished_at = datetime.now(timezone.utc)
+        job.percent = 100.0 if status == "done" else (percent if percent is not None else job.percent)
+    elif percent is not None:
+        job.percent = percent
+        
+    if error_message is not None:
+        job.error_message = error_message
+        
     db.add(job)
 
 
@@ -214,7 +231,7 @@ def process_material(material_id: int) -> None:
             material.status = "failed"
             db.add(material)
         if processing_started and job is not None:
-            _set_job_status(db, job, "failed")
+            _set_job_status(db, job, "failed", error_message=str(exc))
         db.commit()
         logger.exception(
             "Material processing failed (material_id=%s, job_id=%s): %s",

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, courses, materials, jobs, questions, exports, question_bank
+from app.api.routes import auth, courses, materials, jobs, questions, exports, question_bank, dashboard
 
 api_router = APIRouter()
 
@@ -10,3 +10,4 @@ api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 api_router.include_router(question_bank.router, prefix="/questions", tags=["question-bank"])
 api_router.include_router(questions.router, prefix="/questions", tags=["questions"])
 api_router.include_router(exports.router, prefix="/exports", tags=["exports"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

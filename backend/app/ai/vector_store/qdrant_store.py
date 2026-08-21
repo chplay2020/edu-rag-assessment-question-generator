@@ -18,7 +18,7 @@ from app.ai.vector_store.qdrant_client import get_qdrant_client
 logger = logging.getLogger(__name__)
 
 # Các field được đánh index để filter theo material/course chạy nhanh trên tập lớn.
-INDEXED_PAYLOAD_FIELDS = ("material_id", "course_id")
+INDEXED_PAYLOAD_FIELDS = ("material_id", "course_id", "status")
 
 
 @dataclass(frozen=True)
@@ -107,8 +107,15 @@ def build_question_filter(
     *,
     material_id: int | None = None,
     course_id: int | None = None,
+    status: str | None = None,
 ) -> models.Filter | None:
-    return _build_filter(material_id=material_id, course_id=course_id)
+    filter_obj = _build_filter(material_id=material_id, course_id=course_id)
+    if status is not None:
+        cond = models.FieldCondition(key="status", match=models.MatchValue(value=status))
+        if filter_obj is None:
+            return models.Filter(must=[cond])
+        filter_obj.must.append(cond)
+    return filter_obj
 
 
 class QdrantVectorStore:
@@ -293,6 +300,7 @@ class QdrantVectorStore:
         *,
         material_id: int | None = None,
         course_id: int | None = None,
+        status: str | None = None,
         top_k: int = 5,
         score_threshold: float | None = None,
     ) -> Any:
@@ -302,6 +310,7 @@ class QdrantVectorStore:
             query_filter=build_question_filter(
                 material_id=material_id,
                 course_id=course_id,
+                status=status,
             ),
             limit=top_k,
             with_payload=True,

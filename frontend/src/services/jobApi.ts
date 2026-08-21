@@ -16,7 +16,9 @@ export interface JobResponse {
   material_id: number;
   task_type: string;
   status: 'pending' | 'running' | 'done' | 'failed';
+  percent?: number;
   created_at: string;
+  started_at?: string;
   finished_at?: string;
   error_message?: string;
   config?: JobConfig;

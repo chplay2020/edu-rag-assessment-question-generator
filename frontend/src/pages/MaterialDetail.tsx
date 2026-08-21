@@ -93,6 +93,7 @@ export const MaterialDetail: React.FC = () => {
   //  Processing / polling state
   const [processPhase, setProcessPhase] = useState<ProcessPhase>('idle');
   const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [jobPercent, setJobPercent] = useState<number>(0);
   const [processError, setProcessError] = useState<string | null>(null);
 
 
@@ -136,6 +137,7 @@ export const MaterialDetail: React.FC = () => {
   useEffect(() => {
     setProcessPhase('idle');
     setJobStatus(null);
+    setJobPercent(0);
     setProcessError(null);
     stopPolling();
   }, [mId, stopPolling]);
@@ -212,6 +214,7 @@ export const MaterialDetail: React.FC = () => {
         if (!isMountedRef.current) return;
 
         setJobStatus(job.status);
+        setJobPercent(job.percent ?? 0);
 
         if (job.status === 'done') {
           setProcessPhase('done');
@@ -284,6 +287,7 @@ export const MaterialDetail: React.FC = () => {
   const handleRetryClick = useCallback(() => {
     setProcessPhase('idle');
     setJobStatus(null);
+    setJobPercent(0);
     setProcessError(null);
     stopPolling();
 
@@ -474,7 +478,7 @@ export const MaterialDetail: React.FC = () => {
                     ? 'Đang gửi yêu cầu...'
                     : jobStatus === 'pending'
                       ? 'Đang chờ xử lý...'
-                      : 'Đang xử lý'}
+                      : `Đang xử lý (${Math.round(jobPercent)}%)`}
                 </span>
               </button>
             )}

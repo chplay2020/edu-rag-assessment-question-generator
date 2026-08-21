@@ -171,3 +171,74 @@ def export_questions_to_excel(db: Session, questions: List[Question], user_id: i
         raise e
         
     return final_path, filename
+
+def export_questions_to_word(db: Session, questions: List[Question], user_id: int, question_ids: List[int]) -> Tuple[Path, str]:
+    import docx
+    
+    course_ids = {q.course_id for q in questions if q.course_id is not None}
+    final_course_id = course_ids.pop() if len(course_ids) == 1 else None
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex
+    filename = f"questions_export_{timestamp}_{unique_id}.docx"
+    
+    export_dir = get_export_dir()
+    os.makedirs(export_dir, exist_ok=True)
+    
+    final_path = export_dir / filename
+    temp_path = export_dir / f"{filename}.tmp"
+    
+    doc = docx.Document()
+    doc.add_heading("Danh sách câu hỏi", level=1)
+    
+    for idx, q in enumerate(questions, 1):
+        doc.add_heading(f"Câu {idx}: {q.content}", level=2)
+        
+        sorted_opts = sorted(q.options, key=lambda x: x.id)
+        for i, opt in enumerate(sorted_opts):
+            letter = chr(65 + i)
+            p = doc.add_paragraph()
+            run = p.add_run(f"{letter}. {opt.content}")
+            if opt.is_correct:
+                run.bold = True
+                run.underline = True
+        
+        p_meta = doc.add_paragraph()
+        p_meta.add_run(f"Độ khó: {q.difficulty or 'N/A'} | Bloom: {q.bloom_level or 'N/A'}").italic = True
+        
+        if q.explanation:
+            doc.add_paragraph(f"Giải thích: {q.explanation}")
+            
+        doc.add_paragraph() # Dòng trống
+    
+    try:
+        doc.save(temp_path)
+        os.replace(temp_path, final_path)
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        raise e
+        
+    try:
+        new_export = Export(
+            course_id=final_course_id,
+            exported_by=user_id,
+            file_path=filename,
+            format="docx",
+            question_ids=question_ids
+        )
+        db.add(new_export)
+        db.flush()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        try:
+            os.remove(final_path)
+        except Exception as cleanup_err:
+            logger.error(f"Failed to cleanup file {final_path} after DB error: {cleanup_err}")
+        raise e
+        
+    return final_path, filename

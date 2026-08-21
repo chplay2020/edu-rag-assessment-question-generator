@@ -59,6 +59,10 @@ def job_summary(job: Job) -> dict[str, Any]:
         "task_type": cast(str, job.task_type),
         "job_status": cast(str, job.status),
         "config": cast(dict[str, Any] | None, job.config),
+        "percent": cast(float, job.percent),
+        "error_message": cast(str | None, job.error_message),
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
     }
 
 
